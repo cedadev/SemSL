@@ -1,0 +1,32 @@
+{
+	"version": "1",
+	"hosts": {
+		"{{ host0 }}": {
+		    "alias": "{{ host0_alias }}",
+			"backend": "{{ host0_backend }}",
+			"url": "{{ host0_url }}",
+			"required_credentials": "{{ host0_credentials }}",
+			"object_size": "{{ host0_object_size }}",
+			"read_connections": "{{ host0_read_connections }}",
+			"write_connections": "{{ host0_write_connections }}",
+			"api": "{{ host0_api }}"
+		},
+		"{{ host1 }}": {
+		    "alias": "{{ host1_alias }}",
+			"backend": "{{ host1_backend }}",
+			"url": "{{ host1_url }}",
+			"required_credentials": "{{ host1_credentials }}",
+			"object_size": "{{ host1_object_size }}",
+			"read_connections": "{{ host1_read_connections }}",
+			"write_connections": "{{ host1_write_connections }}",
+			"api": "{{ host1_api }}"
+		},
+	},
+	"cache": {
+		"location": "{{ user_cache_location }}",
+		"cache_size": "{{ user_cache_size }}"
+	},
+	"system": {
+		"object_size_for_memory": "{{ user_max_object_size_for_memory }}"
+	}
+}
