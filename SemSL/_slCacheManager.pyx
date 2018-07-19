@@ -12,7 +12,10 @@ import time
 from SemSL._slConfigManager import slConfig
 
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
+#from SemSL._slCacheDB import slCacheDB_lmdb_nest as slCacheDB
+#from SemSL._slCacheDB import slCacheDB_lmdb_obj as slCacheDB
 #from SemSL._slCacheDB import slCacheDB_sql as slCacheDB
+
 
 class slCacheManager(slCacheDB):
 
@@ -34,7 +37,7 @@ class slCacheManager(slCacheDB):
             return False
 
 
-    def _remove_oldest(self,size):
+    def _remove_oldest(self,size): # rename
         ''' Remove the oldest files from the cache giving at least space for
             the required size.
             size is the required amount of space for the new file
@@ -44,7 +47,7 @@ class slCacheManager(slCacheDB):
             self.remove_entry(rem_id)
             self._remove_file(rem_id)
 
-    def _put_in_cache(self,fid,test=False,file_size=None):
+    def _write_to_cache(self,fid,test=False,file_size=None):
         if not self.check_cache(fid):
             # get file from backend
             if not test:
@@ -78,6 +81,7 @@ class slCacheManager(slCacheDB):
             into cache and update the database.
 
         :param fid: the id of the file
+        :param data: can pass the data straight from memory?
         :param test: whether the method is being called from a test, then creates dummy file
         :return: the path to the file in cache
         '''
@@ -89,22 +93,60 @@ class slCacheManager(slCacheDB):
         else:
             if test:
                 if not file_size == None:
-                    self._put_in_cache(fid,test=True,file_size=file_size)
+                    self._write_to_cache(fid,test=True,file_size=file_size)
                 else:
-                    self._put_in_cache(fid,test=True)
+                    self._write_to_cache(fid,test=True)
             else:
                 raise NotImplementedError
             return self.get_cache_loc(fid)
 
+    def put(self,fid,data=None,test=False,file_size=None):
+        ''' Uploads the file from cache, or directly to the backend, if not in cache, will save to cache
+
+        :param fid:
+        :param data:
+        :param test:
+        :param file_size:
+        :return: 0 on success
+        '''
+
+        if not data:
+            # upload to backend, bypass checking if file is in cache
+            if self.check_cache(fid):
+                floc = self.get_cache_loc(fid)
+                # take file and stick in backend
+                if test:
+                    pass
+                else:
+                    raise NotImplementedError
+
+            else:
+                raise ValueError, 'We have nothing to put into backend?'
+        elif data:
+            #save data to backend
+            raise NotImplementedError
+
+        # add file to cache
+        if not self.check_cache(fid):
+            if test:
+                if not file_size == None:
+                    self._write_to_cache(fid,test=True,file_size=file_size)
+                else:
+                    self._write_to_cache(fid,test=True)
+            else:
+                raise NotImplementedError
+        return 0
+
     def _remove_file(self,fid,silent=False):
         try:
             if self.cache_loc[-1] != '/':
-                os.remove(self.cache_loc + '/' + fid.split('/')[-1])
+                path = '{}/{}'.format(self.cache_loc, fid.split('/')[-1])
             else:
-                os.remove(self.cache_loc + fid.split('/')[-1])
+                path = '{}{}'.format(self.cache_loc, fid.split('/')[-1])
+            os.remove(path.encode())
         except OSError as e:
             if not silent:
-                print 'OSError for file not existing? : ', fid
+                print('OSError for file not existing? : {}'.format(fid))
 
 
     def _clear_cache(self):
@@ -119,14 +161,18 @@ class slCacheManager(slCacheDB):
         self.close_db()
         if self.cache_loc[-1] != '/':
             try:
-                os.remove(self.cache_loc + '/' + 'semslcachedb')
+                path = '{}/semslcachedb'.format(self.cache_loc)
+                os.remove(path.encode())
             except OSError:
-                os.system('rm -r %s' % self.cache_loc + '/' + 'semslcachedb')
+                path = 'rm -r {}'.format('{}/semslcachedb'.format(self.cache_loc))
+                os.system(path.encode())
         else:
             try:
-                os.remove(self.cache_loc + 'semslcachedb')
+                path = '{}semslcachedb'.format(self.cache_loc)
+                os.remove(path.encode())
             except OSError:
-                os.system('rm -rf %s' % self.cache_loc + 'semslcachedb')
+                path = 'rm -r {}'.format('{}semslcachedb'.format(self.cache_loc))
+                os.system(path.encode())
         return 0
 
 

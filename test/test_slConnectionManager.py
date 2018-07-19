@@ -32,13 +32,13 @@ def test_slConnectionManager():
            conn_man.total_connections("s3://minio"),
            conn_man.open_connections("s3://minio")))
 
-    print ("===== FTP =====")
+    #print ("===== FTP =====")
     # test FTP
-    ftp1 = conn_man.open("ftp://vagrant")
-    ftp2 = conn_man.open("ftp://vagrant")
-    print ("Total conns: {}\nOpen conns: {}".format(
-           conn_man.total_connections("ftp://vagrant"),
-           conn_man.open_connections("ftp://vagrant")))
+    #ftp1 = conn_man.open("ftp://vagrant")
+    #ftp2 = conn_man.open("ftp://vagrant")
+    #print ("Total conns: {}\nOpen conns: {}".format(
+    #       conn_man.total_connections("ftp://vagrant"),
+    #       conn_man.open_connections("ftp://vagrant")))
 
 if __name__ == "__main__":
     test_slConnectionManager()
