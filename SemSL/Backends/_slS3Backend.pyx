@@ -1,4 +1,5 @@
 import boto3
+from botocore.client import Config
 
 from _slBackend import slBackend
 from SemSL._slExceptions import slIOException, slAPIException
@@ -13,6 +14,7 @@ class slS3Backend(slBackend):
     def connect(self, endpoint, credentials):
         """Create connection to object store / AWS, using the supplied
         credentials."""
+        #config = Config(connect_timeout=10, retries={'max_attempts': 0})
         try:
             s3c = boto3.client("s3", endpoint_url=endpoint,
                                aws_access_key_id=credentials['access_key'],
