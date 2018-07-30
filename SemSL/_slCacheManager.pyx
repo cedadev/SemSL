@@ -28,14 +28,12 @@ class slCacheManager(object):
         self.cache_loc =  self.sl_config['cache']['location']
         self.access_type = 'r'
 
-    def _return_s3_client(self):
+    def _return_client(self):
         # return s3 client for testing purposes
-        self.sl_config = slConfig()
-        self.cache_loc = self.sl_config['cache']['location']
         conn_man = slConnectionManager(self.sl_config)
         conn = conn_man.open("s3://minio")
-        s3 = conn.get()
-        return s3
+        client = conn.get()
+        return client
 
     def _space_in_cache(self,size):
         ''' Calculates whether there is space in the cache for the new file.
@@ -93,6 +91,12 @@ class slCacheManager(object):
             return 0
 
     def _upload_from_cache(self,fid,test=False):
+        '''
+        Uploads the required file from cache to the backend. Called from close().
+        :param fid: the file name
+        :param test: determines whether the call is from a test
+        :return:
+        '''
 
     def open(self,fid,access_type='r',diskless=False,test=False,file_size=None):
         '''Retrieve the required filepath for the file from the cache, if the file doesn't exist in cache then pull it
