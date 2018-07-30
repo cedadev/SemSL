@@ -28,12 +28,39 @@ class slCacheManager(object):
         self.cache_loc =  self.sl_config['cache']['location']
         self.access_type = 'r'
 
-    def _return_client(self):
-        # return s3 client for testing purposes
+    def _get_alias(self,fid):
+
+        # get all host keys
+        hosts = self.sl_config['hosts']
+        host_keys = hosts.keys()
+        # Iterate through config to get all aliases
+        aliases = []
+        for host_name in iter(host_keys):
+            aliases.append(self.sl_config['hosts'][host_name]['alias'])
+
+        for alias in aliases:
+            if alias in fid:
+                return alias
+
+    def _return_client(self,fid):
+
         conn_man = slConnectionManager(self.sl_config)
-        conn = conn_man.open("s3://minio")
+        alias = self._get_alias(fid)
+        conn = conn_man.open(alias)
         client = conn.get()
         return client
+
+    def _get_fname(self,fid):
+        fname = fid[:]
+        alias = self._get_alias(fid)
+        bucket = self._get_bucket(fid)
+        fname = fname.replace(alias,'')
+        fname = fname.replace(bucket,'')
+        #remove preceeding /
+        while fname[0] == '/':
+            fname = fname[1:]
+
+        return fname
 
     def _space_in_cache(self,size):
         ''' Calculates whether there is space in the cache for the new file.
@@ -73,22 +100,29 @@ class slCacheManager(object):
                 raise NotImplementedError
             # remove oldest cached files if need be
             self._remove_oldest(file_size)
-            # save to cache
-            if test:
-                bucket = 'cachetest'
-                s3 = self._return_s3_client()
-                s3.download_file(bucket,fid.split('/')[-1], self.DB.cache_loc+'/'+fid.split('/')[-1])
-                # with open(self.DB.cache_loc+'/'+fid.split('/')[-1],'w') as f:
-                #     f.write('testwrite')
-            else:
-                # get the files from the backend into the cache area
-                raise NotImplementedError
+
+            bucket = self._get_bucket(fid)
+            client = self._return_client(fid)
+            alias = self._get_alias(fid)
+            fname = self._get_fname(fid)
+            client.download_file(bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
             # update cachedb
             # set access and creation time, and filesize
             self.DB.add_entry(fid,file_size)
-
         else:
             return 0
+
+    def _get_bucket(self,fid):
+        '''
+        Return the bucketname
+        :param fid:
+        :return:
+        '''
+        fname = fid[:]
+        alias = self._get_alias(fid)
+        bucket = fname.replace(alias,'')
+        assert bucket.split('/')[0] == ''
+        return bucket.split('/')[1]
 
     def _upload_from_cache(self,fid,test=False):
         '''
@@ -97,6 +131,18 @@ class slCacheManager(object):
         :param test: determines whether the call is from a test
         :return:
         '''
+
+        # get location of file
+        cloc = self.DB.get_cache_loc(fid)
+        client = self._return_client(fid)
+        bucket = self._get_bucket(fid)
+        # TODO: check if there is a bucket??
+
+        alias = self._get_alias(fid)
+        fname = self._get_fname(fid,alias)
+        client.upload_file(cloc,bucket,fname)
+
+
 
     def open(self,fid,access_type='r',diskless=False,test=False,file_size=None):
         '''Retrieve the required filepath for the file from the cache, if the file doesn't exist in cache then pull it
@@ -109,6 +155,7 @@ class slCacheManager(object):
         '''
         self.access_type = access_type
         self.fid = fid
+        self.diskless=diskless
         if access_type == 'r' or access_type == 'a':
             if self.DB.check_cache(fid):
                 # if the file exists in cache the access time needs updating
@@ -116,19 +163,15 @@ class slCacheManager(object):
                 return self.DB.get_cache_loc(fid)
             else:
                 if test:
-                    # if not file_size == None:
-                    #     self._write_to_cache(fid,test=True,file_size=file_size)
-                    # else:
-                    #     self._write_to_cache(fid,test=True)
                     self._write_to_cache(fid,test=True,file_size=file_size)
                 else:
                     # get connection
                     # call get on backend
                     if not diskless:
-                        pass
                         # write file to cache
                         # a 'download' avoids reading too much into memory and crashing as opposed to a 'read'
                         #file_size= GET FILESIZE
+                        self._write_to_cache(fid,file_size=file_size)
                         #self._write_to_cache(fid,file_size=file_size)
                     else: # diskless
                         # 'get' file, don't write to cache
@@ -137,6 +180,7 @@ class slCacheManager(object):
                 return self.DB.get_cache_loc(fid)
 
         elif access_type == 'w':
+            # need to just create a file!
             pass
 
         else:
@@ -145,45 +189,26 @@ class slCacheManager(object):
 
     def close(self,test=False):
         ''' Uploads the file from cache, or directly to the backend, if not in cache, will save to cache
-
-        :param fid:
         :param test:
         :param file_size:
         :return: 0 on success
         '''
 
+        fid = self.fid
         if self.access_type == 'r':
-            # update acces db
+            # update access db
             pass
         elif self.access_type == 'a' or self.access_type == 'w':
-            # if diskless
-            # do something
-            #else
-            # do something else
+            if self.diskless:
+                pass
+                # do something
+            else:
+                # do something else
+                if self.DB.check_cache(fid):
+                    self._upload_to_backend(fid)
             pass
         else:
             raise ValueError('Access mode not supported')
-
-
-        # upload to backend, bypass checking if file is in cache
-        if self.DB.check_cache(fid):
-            floc = self.DB.get_cache_loc(fid)
-            # take file and stick in backend
-            if test:
-                pass
-            else:
-                raise NotImplementedError
-
-        else:
-            raise ValueError, 'We have nothing to put into backend?'
-
-        # add file to cache
-        if not self.DB.check_cache(fid):
-            if test:
-                pass
-            else:
-                raise NotImplementedError
-        return 0
 
     def _remove_file(self,fid,silent=False):
         try:

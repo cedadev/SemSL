@@ -95,9 +95,9 @@ class TestCacheManager(unittest.TestCase):
     def setUp(self):
         self.sl_cache = slCacheManager()
         # add example file to db
-        self.FID_IN_CACHE = 's3://minio/{}'.format(FID_IN_CACHE)
-        self.FID_NOT_IN_CACHE = 's3://minio/{}'.format(FID_NOT_IN_CACHE)
-        self.EXTRA_FID_NOT_IN_CACHE = 's3://minio/{}'.format(EXTRA_FID_NOT_IN_CACHE)
+        self.FID_IN_CACHE = 's3://minio/cachetest/{}'.format(FID_IN_CACHE)
+        self.FID_NOT_IN_CACHE = 's3://minio/cachetest/{}'.format(FID_NOT_IN_CACHE)
+        self.EXTRA_FID_NOT_IN_CACHE = 's3://minio/cachetest/{}'.format(EXTRA_FID_NOT_IN_CACHE)
         self.sl_cache.DB.add_entry(self.FID_IN_CACHE,size=60*10**6)
         self.sl_config = slConfig()
         self.cache_loc = self.sl_config['cache']['location']
@@ -206,7 +206,7 @@ class TestCacheManager(unittest.TestCase):
             self.assertEqual(glob.glob('{}test*'.format(self.cache_loc)),[])
 
 
-# class TestWithS3(unittest.TestCase):
+# class TestWithS3_realdata(unittest.TestCase):
 #     def setUp(self):
 #         pass
 #
