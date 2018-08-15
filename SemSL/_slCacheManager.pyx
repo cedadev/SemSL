@@ -12,6 +12,7 @@ import time
 import psutil
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
+import botocore
 
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
 #from SemSL._slCacheDB import slCacheDB_lmdb_nest as slCacheDB
@@ -41,6 +42,8 @@ class slCacheManager(object):
         for alias in aliases:
             if alias in fid:
                 return alias
+            else: # return None if alias isn't found in list
+                return
 
     def _return_client(self,fid):
 
@@ -105,7 +108,15 @@ class slCacheManager(object):
             client = self._return_client(fid)
             alias = self._get_alias(fid)
             fname = self._get_fname(fid)
-            client.download_file(bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
+            if '/' in fname:
+                try:
+                    os.makedirs(str.join('',fname.split('/')[:-1]))
+                except FileExistsError:
+                    pass
+            try:
+                client.download_file(bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
+            except botocore.exceptions.ClientError:
+                raise ValueError('File not found')
             # update cachedb
             # set access and creation time, and filesize
             self.DB.add_entry(fid,file_size)
@@ -136,13 +147,35 @@ class slCacheManager(object):
         cloc = self.DB.get_cache_loc(fid)
         client = self._return_client(fid)
         bucket = self._get_bucket(fid)
-        # TODO: check if there is a bucket??
 
-        alias = self._get_alias(fid)
-        fname = self._get_fname(fid,alias)
+        # create list of buckets to check through
+        buckets_dict = client.list_buckets()['Buckets']
+        bucket_check = False
+        for i in range(len(buckets_dict)):
+            if buckets_dict[i]['Name'] == bucket:
+                bucket_check = True
+        # create bucket if it doen't exist
+        if not bucket_check:
+            client.create_bucket(Bucket=bucket)
+
+        fname = self._get_fname(fid)
         client.upload_file(cloc,bucket,fname)
 
+    def _check_whether_posix(self,fid,access_type):
+        # Check whether there is an alias in the file path if not, assume it is a posix filepath and pass back the
+        # filepath as the cache path, as there is no need to cp from disk to the caching area
+        if self._get_alias(fid) == None:
+            # Check whether is looks like a filepath
+            # use os.path.exists for a or r
+            if access_type == 'r' or access_type == 'a':
+                return os.path.exists(fid)
 
+            elif access_type == 'w':
+                return os.path.exists(os.path.dirname(fid))
+
+            return False # returns False if alias not in
+        else:
+            return 'Alias exists' # return None if alias is in list
 
     def open(self,fid,access_type='r',diskless=False,test=False,file_size=None):
         '''Retrieve the required filepath for the file from the cache, if the file doesn't exist in cache then pull it
@@ -156,6 +189,23 @@ class slCacheManager(object):
         self.access_type = access_type
         self.fid = fid
         self.diskless=diskless
+
+        # Check if the file path is probably just a posix path -- then just return the same path
+        if self._check_whether_posix(fid,access_type) == 'Alias exists':
+            pass
+        elif self._check_whether_posix(fid,access_type):
+            return fid
+        elif not self._check_whether_posix(fid,access_type):
+            raise ValueError("Invalid alias, or path doesn't exist")
+        else:
+            raise TypeError('File ID not valid')
+
+
+        if self.diskless:
+            raise NotImplementedError
+            # we need to assert whether the required file can fit into memory before we try
+            # this, and if it doesn't, then throw an error?
+
         if access_type == 'r' or access_type == 'a':
             if self.DB.check_cache(fid):
                 # if the file exists in cache the access time needs updating
@@ -180,24 +230,31 @@ class slCacheManager(object):
                 return self.DB.get_cache_loc(fid)
 
         elif access_type == 'w':
-            # need to just create a file!
-            pass
+            # create a cache entry
+            self.DB.add_entry(fid)
+            # use backend to create file?
+            # for dev purposes
+            with open(self.DB.get_cache_loc(fid),'w') as f:
+                f.write('test')
+            # create file with frontend... TODO
+
+            return self.DB.get_cache_loc(fid)
 
         else:
             raise ValueError('Invalid access type')
 
 
-    def close(self,test=False):
+    def close(self,fid,test=False):
         ''' Uploads the file from cache, or directly to the backend, if not in cache, will save to cache
         :param test:
         :param file_size:
         :return: 0 on success
         '''
 
-        fid = self.fid
+        #fid = self.fid
         if self.access_type == 'r':
             # update access db
-            pass
+            self.DB.update_access_time(fid)
         elif self.access_type == 'a' or self.access_type == 'w':
             if self.diskless:
                 pass
@@ -205,7 +262,7 @@ class slCacheManager(object):
             else:
                 # do something else
                 if self.DB.check_cache(fid):
-                    self._upload_to_backend(fid)
+                    self._upload_from_cache(fid)
             pass
         else:
             raise ValueError('Access mode not supported')
