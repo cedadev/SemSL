@@ -9,5 +9,17 @@ class slBackend(object):
     def connect(self, url, credentials):
         raise NotImplementedError
 
+    def close(self):
+        raise NotImplementedError
+
     def get_id(self):
         return ("slBackend")
+
+    def download(self):
+        raise NotImplementedError
+
+    def upload(self):
+        raise NotImplementedError
+
+    def open(self):
+        raise NotImplementedError

@@ -1,4 +1,5 @@
 import boto3
+from botocore.exceptions import ClientError
 from botocore.client import Config
 
 from _slBackend import slBackend
@@ -24,10 +25,37 @@ class slS3Backend(slBackend):
                                 endpoint, e)
         return s3c
 
-    def close(conn):
+    def close(self):
         """Static function to close a connection passed in."""
         # boto3 doesn't have a close connection method!
         pass
 
     def get_id(self):
         return ("slS3Backend")
+
+    def download(self,conn,bucket,key,cacheloc):
+        ''' Downloads file from OS to prescribed place in cache.
+        '''
+        try:
+            conn.download_file(bucket,key, cacheloc)# only works with boto3 client objects
+        except ClientError:
+            raise ValueError('File not found')
+    def create_bucket(self,conn,bucket):
+        ''' Creates bucket.
+
+        :param bucket:
+        :return:
+        '''
+        conn.create_bucket(Bucket=bucket)
+
+    def upload(self,conn,cloc,bucket,fname):
+        ''' uploads file to backend
+
+        :param conn:
+        :param cloc:
+        :param bucket:
+        :param fname:
+        :return:
+        '''
+        print(type(fname))
+        conn.upload_file(cloc,bucket,fname)
