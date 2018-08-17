@@ -23,3 +23,6 @@ class slBackend(object):
 
     def open(self):
         raise NotImplementedError
+
+    def list_buckets(self):
+        raise NotImplementedError

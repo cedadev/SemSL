@@ -59,3 +59,6 @@ class slS3Backend(slBackend):
         '''
         print(type(fname))
         conn.upload_file(cloc,bucket,fname)
+
+    def list_buckets(self,conn):
+        return conn.list_buckets()['Buckets']

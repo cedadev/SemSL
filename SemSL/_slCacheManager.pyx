@@ -112,7 +112,7 @@ class slCacheManager(object):
         backend_name = host_config['backend']
         backend = Backends.get_backend_from_id(backend_name)
 
-        return backend
+        return backend()
 
     def _write_to_cache(self,fid,test=False,file_size=None):
         if not self.DB.check_cache(fid):
@@ -143,7 +143,7 @@ class slCacheManager(object):
             # get the correct backend for the file
             backend = self._get_backend(fid)
 
-            backend.download(self,client,bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
+            backend.download(client,bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
 
             # update cachedb
             # set access and creation time, and filesize
@@ -176,22 +176,23 @@ class slCacheManager(object):
         client = self._return_client(fid)
         bucket = self._get_bucket(fid)
 
+        # get backend object
+        backend = self._get_backend(fid)
+
         # create list of buckets to check through
-        buckets_dict = client.list_buckets()['Buckets']
+        buckets_dict = backend.list_buckets(client)
         bucket_check = False
         for i in range(len(buckets_dict)):
             if buckets_dict[i]['Name'] == bucket:
                 bucket_check = True
 
-        # get backend object
-        backend = self._get_backend(fid)
 
         # create bucket if it doen't exist
         if not bucket_check:
-            backend.create_bucket(self,client,bucket)
+            backend.create_bucket(client,bucket)
 
         fname = self._get_fname(fid)
-        backend.upload(self,client,cloc,bucket,fname)
+        backend.upload(client,cloc,bucket,fname)
 
     def _check_whether_posix(self,fid,access_type):
         # Check whether there is an alias in the file path if not, assume it is a posix filepath and pass back the
