@@ -266,8 +266,8 @@ class slCacheManager(object):
             self.DB.add_entry(fid)
             # use backend to create file?
             # for dev purposes
-            with open(self.DB.get_cache_loc(fid),'w') as f:
-                f.write('test')
+            # with open(self.DB.get_cache_loc(fid),'w') as f:
+            #     f.write('test')
             # create file with frontend... TODO
 
             return self.DB.get_cache_loc(fid)

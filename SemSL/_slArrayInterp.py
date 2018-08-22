@@ -1,0 +1,1 @@
+# This interprets the contents of the json master file to interface with the dataset class

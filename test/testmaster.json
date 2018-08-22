@@ -1,0 +1,55 @@
+{
+  "filename": "testmaster.json",
+  "subfiletype": "netcdf",
+  "dimensions": {
+    "time": 2,
+    "height": 1,
+    "lat": 1,
+    "lon": 1
+  },
+  "variables": {
+    "time": {
+      "type": "double",
+      "long_name": "time"
+    },
+    "....":{},
+    "var1": {
+      "long_name": "test_var",
+      "cfa_role": "cfa_variable",
+      "cfa_dimensions": "time height lat lon",
+      "cfa_array": {
+        "pmshape": [2],
+        "pmdimensions": "time",
+        "Partitions": {
+          "p0": {
+            "index": [0],
+            "data": {
+              "file": "testmaster/testmaster.var1[0].nc",
+              "shape": [1,1,1,1],
+              "ncvar": "var1"
+            },
+            "location": [[0,1],[0,1],[0,1],[0,1]]
+          },
+          "p1": {
+            "index": [1],
+            "data": {
+              "file": "testmaster/testmaster.var1[1].nc",
+              "shape": [1,1,1,1],
+              "ncvar": "var1"
+            },
+            "location": [[1,2],[0,1],[0,1],[0,1]]
+          }
+        }
+      }
+    }
+  },
+  "global_attributes":{
+    "Conventions": "CF-1.5 CFA"
+  },
+  "data":{
+    "time": ...,
+    "height": ...,
+    "lat": ...,
+    "lon": ...
+  }
+}
