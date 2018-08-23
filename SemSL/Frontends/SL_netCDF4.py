@@ -23,7 +23,7 @@ from collections import OrderedDict
 
 # these are class attributes that only exist at the python level (not in the netCDF file).
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
-_s3_private_atts = [\
+_s3_private_atts = [
  # member variables
  '_file_details', '_cfa_variables', '_s3_client_config',
 ]
@@ -62,17 +62,19 @@ class s3Dataset(netCDF4.Dataset):
         # switch on the read / write / append mode
         if mode == 'r' or mode == 'a' or mode == 'r+':             # read
             # check whether the memory has been set from get_netCDF_file_details (i.e. the file is streamed to memory)
+
+            c_file = slC.open(filename, mode)
             if self._file_details.memory != "" or diskless:
                 # we have to first create the dummy file (name held in file_details.memory) - check it exists before creating it
                 if not os.path.exists(self._file_details.filename):
-                    temp_file = netCDF4.Dataset(self._file_details.filename, 'w', format=self._file_details.format).close()
+                    temp_file = netCDF4.Dataset(c_file, 'w', format=self._file_details.format).close()
                 # create the netCDF4 dataset from the data, using the temp_file
                 netCDF4.Dataset.__init__(self, self._file_details.filename, mode=mode, clobber=clobber,
                                          format=self._file_details.format, diskless=True, persist=False,
                                          keepweakref=keepweakref, memory=self._file_details.memory, **kwargs)
             else:
                 # not in memory but has been streamed to disk
-                netCDF4.Dataset.__init__(self, self._file_details.filename, mode=mode, clobber=clobber,
+                netCDF4.Dataset.__init__(self, c_file, mode=mode, clobber=clobber,
                                          format=self._file_details.format, diskless=False, persist=persist,
                                          keepweakref=keepweakref, memory=None, **kwargs)
 
@@ -81,6 +83,7 @@ class s3Dataset(netCDF4.Dataset):
                 cfa = "CFA" in self.getncattr("Conventions")
             except:
                 cfa = False
+
 
             if cfa:
                 # Parse the CFA metadata from this class' metadata
@@ -93,9 +96,9 @@ class s3Dataset(netCDF4.Dataset):
                         self._cfa_variables[v] = s3Variable(self.variables[v],
                                                             self._file_details.cfa_file,
                                                             self._file_details.cfa_file.cfa_vars[v],
-                                                            {'cache_location' : self._s3_client_config['cache_location'],
-                                                             'max_object_size_for_memory' : self._s3_client_config['max_object_size_for_memory'],
-                                                             'read_threads' : self._s3_client_config['read_threads']})
+                                                            {'cache_location' : self._s3_client_config['cache']['location'],
+                                                             'max_object_size_for_memory' : 10000000,
+                                                             'read_threads' : 1})
             else:
                 self._file_details.cfa_file = None
 
@@ -263,7 +266,14 @@ class s3Dataset(netCDF4.Dataset):
 
     def close(self):
         """Close the netCDF file.  If it is a S3 file and the mode is write then upload to the storage."""
-
+        if (self._file_details.filemode == 'w' or
+                self._file_details.filemode == "r+" or
+                self._file_details.filemode == 'a'):
+            try:
+                conv_attrs = self.getncattr("Conventions")
+                self.setncattr("Conventions", conv_attrs + " CFA-0.4")
+            except:
+                self.setncattr("Conventions", "CFA-0.4")
         netCDF4.Dataset.close(self)
         slC = slCache()
         slC.close(self._file_details.filename)
@@ -289,7 +299,7 @@ class s3Variable(object):
        The other methods we need to pass through to the _nc_var member variable."""
 
     def __repr__(self):
-        return unicode(self._nc_var).encode('utf-8')
+        return str(self._nc_var)
 
     def __array__(self):
         return self[:]
@@ -458,7 +468,7 @@ class s3Variable(object):
         subset_shape = []
         for s in elem_slices:
             dim_size = (s.stop-s.start+1)/s.step
-            subset_shape.append(dim_size)
+            subset_shape.append(int(dim_size))
             subset_size *= dim_size
 
         # calculate the size (in bytes) of the subset of the array

@@ -27,27 +27,36 @@ class _baseInterface(object):
     def _read_partition(self, thread_number, return_queue, part, elem_slices):
         """Read a single partition.  This is overloaded so we can have local data for each thread."""
         # get the filename, either in the cache for s3 files or on disk for POSIX
-        file_details = get_netCDF_file_details(part.subarray.file, 'r')
+
+        slC = slCache()
+        try:
+            file_details = slC.open(part.subarray.file, access_type='r')
+        except ValueError:
+            os.makedirs(os.path.dirname(part.subarray.file))
+            file_details = slC.open(part.subarray.file, access_type='r')
+
 
         # open the file as a dataset - see if it is first streamed to memory
-        if file_details.memory != "":
-            # add the slot number to the filename to avoid the threads from reading / writing the same file
-            file_details.filename += "_" + str(thread_number)
-            # we have to first create the dummy file (name held in file_details.filename) - check it exists before creating it
-            if not os.path.exists(file_details.filename):
-                temp_file = netCDF4.Dataset(file_details.filename, 'w', format=file_details.format).close()
-            # create the netCDF4 dataset from the data, using the temp_file
-            nc_file = netCDF4.Dataset(file_details.filename, mode='r',
-                                      diskless=True, persist=False, memory=file_details.memory)
-        else:
-            # not in memory but has been streamed to disk - persist in the cache
-            nc_file = netCDF4.Dataset(file_details.filename, mode='r')
+        # if file_details.memory != "":
+        #     # add the slot number to the filename to avoid the threads from reading / writing the same file
+        #     file_details.filename += "_" + str(thread_number)
+        #     # we have to first create the dummy file (name held in file_details.filename) - check it exists before creating it
+        #     if not os.path.exists(file_details):
+        #         temp_file = netCDF4.Dataset(file_details, 'w').close()
+        #     # create the netCDF4 dataset from the data, using the temp_file
+        #     nc_file = netCDF4.Dataset(file_details, mode='r',
+        #                               diskless=True, persist=False, memory=file_details.memory)
+        # else:
+        # not in memory but has been streamed to disk - persist in the cache
+        nc_file = netCDF4.Dataset(file_details, mode='r')
 
         # get the source and target slices - use the filled slices from above
         py_source_slice, py_target_slice = get_source_target_slices(part, elem_slices)
         # get the variable
         nc_var = nc_file.variables[part.subarray.ncvar]
         return_queue.put([nc_var, py_source_slice, py_target_slice])
+
+        slC.close(file_details)
 
 
     def _write_partition(self, part, elem_slices):
@@ -63,7 +72,6 @@ class _baseInterface(object):
         except ValueError:
             os.makedirs(os.path.dirname(part.subarray.file))
             file_details = slC.open(part.subarray.file, access_type='w')
-        print(file_details)
         # check if the file has already been created
         if os.path.exists(part.subarray.file):
             # open the file in append mode

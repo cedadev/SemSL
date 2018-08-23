@@ -16,7 +16,7 @@ DIMSIZE = 20
 
 class testWrite(unittest.TestCase):
 
-    def test_posix_write(self):
+    def test_1_posix_write(self):
         self.f = Dataset('./testnc.nc','w')
         self.f.test = 'Created for SemSL tests'
 
@@ -41,7 +41,7 @@ class testWrite(unittest.TestCase):
         self.var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
         self.f.close()
 
-    def test_s3_write(self):
+    def test_2_s3_write(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'w')
         self.f.test = 'Created for SemSL tests'
 
@@ -64,6 +64,24 @@ class testWrite(unittest.TestCase):
         self.var = self.f.createVariable(VARNAME, 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
         self.var.units = 'test unit'
         self.var[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
+        self.f.close()
+
+    def test_3_read_posix(self):
+        self.f = Dataset('./testnc.nc', 'r')
+
+        v = self.f.getVariable('var')
+
+        data = v[:]
+        print(data[0,0,0,:10])
+        self.assertTrue(data[0,0,0,0])
+        self.f.close()
+
+    def test_4_read_s3(self):
+        self.f = Dataset('s3://minio/databucket/testnc.nc', 'r')
+        v = self.f.getVariable('var')
+        data = v[:]
+        print(data[0,0,0,:10])
+        self.assertTrue(data[0,0,0,0])
         self.f.close()
 
 """ This refers to old lib
