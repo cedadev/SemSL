@@ -86,6 +86,12 @@ class s3Dataset(netCDF4.Dataset):
 
 
             if cfa:
+                # Get the host name in order to get the specific settings
+                try:
+                    host_name = slC._get_hostname(self._file_details.filename)
+                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                except ValueError:
+                    obj_size = 0
                 # Parse the CFA metadata from this class' metadata
                 self._file_details.cfa_file = CFAFile()
                 self._file_details.cfa_file.parse(self)
@@ -97,7 +103,7 @@ class s3Dataset(netCDF4.Dataset):
                                                             self._file_details.cfa_file,
                                                             self._file_details.cfa_file.cfa_vars[v],
                                                             {'cache_location' : self._s3_client_config['cache']['location'],
-                                                             'max_object_size_for_memory' : 10000000,
+                                                             'max_object_size_for_memory' : obj_size,
                                                              'read_threads' : 1})
             else:
                 self._file_details.cfa_file = None
@@ -184,6 +190,9 @@ class s3Dataset(netCDF4.Dataset):
            For standard netCDF files (non CFA split) just pass through to the base method.
            For CF-netCDF files, create the variable with no dimensions, and create the
            required CFA metadata."""
+
+        slC = slCache()
+
         if self._file_details.cfa_file is None:
             var = netCDF4.Dataset.createVariable(self, varname, datatype, dimensions, zlib,
                     complevel, shuffle, fletcher32, contiguous,
@@ -246,6 +255,13 @@ class s3Dataset(netCDF4.Dataset):
                         md = {k: self.variables[d].getncattr(k) for k in self.variables[d].ncattrs()}
                         self._file_details.cfa_file.cfa_dims[d].metadata = md
 
+                # Get the host name in order to get the specific settings
+                try:
+                    host_name = slC._get_hostname(self._file_details.filename)
+                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                except ValueError:
+                    obj_size = 0
+
 
                 # keep the calling parameters in a dictionary, and add the parameters from the client config
                 parameters = {'varname' : varname, 'datatype' : datatype, 'dimensions' : dimensions, 'zlib' : zlib,
@@ -254,7 +270,7 @@ class s3Dataset(netCDF4.Dataset):
                               'least_significant_digit' : least_significant_digit,
                               'fill_value' : fill_value, 'chunk_cache' : chunk_cache,
                               'cache_location' : self._s3_client_config['cache']['location'],
-                              'max_object_size_for_memory' : 100000,
+                              'max_object_size_for_memory' : obj_size,
                               'write_threads' : 1}
 
                 # create the s3Variable which is a reimplementation of the netCDF4 variable

@@ -88,15 +88,9 @@ class slCacheManager(object):
             self.DB.remove_entry(rem_id)
             self._remove_file(rem_id)
 
-    def _get_backend(self,fid):
-        """ Get the backend object inorder to interact with the backend
-
-        :param fid:
-        :return:
-        """
+    def _get_hostname(self,fid):
 
         alias = self._get_alias(fid)
-
         host_name = None
         try:
             hosts = self.sl_config["hosts"]
@@ -107,6 +101,17 @@ class slCacheManager(object):
             raise ValueError("Error in config file {} {}".format(
                                 self.sl_config["filename"],
                                 e))
+        return host_name
+
+
+    def _get_backend(self,fid):
+        """ Get the backend object inorder to interact with the backend
+
+        :param fid:
+        :return:
+        """
+
+        host_name = self._get_hostname(fid)
 
         host_config = self.sl_config["hosts"][host_name]
         backend_name = host_config['backend']
