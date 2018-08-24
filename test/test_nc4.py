@@ -38,6 +38,7 @@ class testWrite(unittest.TestCase):
         dim4d.axis = "X"
         self.var = self.f.createVariable(VARNAME, 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
         self.var.units = 'test unit'
+        np.random.seed(0)
         self.var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
         self.f.close()
 
@@ -63,6 +64,7 @@ class testWrite(unittest.TestCase):
         dim4d.axis = "X"
         self.var = self.f.createVariable(VARNAME, 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
         self.var.units = 'test unit'
+        np.random.seed(0)
         self.var[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
         self.f.close()
 
@@ -72,7 +74,6 @@ class testWrite(unittest.TestCase):
         v = self.f.getVariable('var')
 
         data = v[:]
-        print(data[0,0,0,:10])
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 
@@ -80,7 +81,6 @@ class testWrite(unittest.TestCase):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'r')
         v = self.f.getVariable('var')
         data = v[:]
-        print(data[0,0,0,:10])
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 

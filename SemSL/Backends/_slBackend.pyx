@@ -26,3 +26,6 @@ class slBackend(object):
 
     def list_buckets(self):
         raise NotImplementedError
+
+    def get_object_size(self):
+        raise NotImplementedError

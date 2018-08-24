@@ -116,6 +116,14 @@ class slCacheManager(object):
 
     def _write_to_cache(self,fid,test=False,file_size=None):
         if not self.DB.check_cache(fid):
+
+            bucket = self._get_bucket(fid)
+            client = self._return_client(fid)
+            alias = self._get_alias(fid)
+            fname = self._get_fname(fid)
+            # get the correct backend for the file
+            backend = self._get_backend(fid)
+
             # get file from backend
             if not test:
                 print 'WARNING: backend not implemented, using dummy file'
@@ -125,23 +133,19 @@ class slCacheManager(object):
                 if file_size is None:
                     file_size = 90*10**6
             else:
-                # need to caculate or query the files size
-                raise NotImplementedError
+                # need to calculate or query the files size
+                backend.get_object_size(client,bucket,fname)
             # remove oldest cached files if need be
             self._remove_oldest(file_size)
 
-            bucket = self._get_bucket(fid)
-            client = self._return_client(fid)
-            alias = self._get_alias(fid)
-            fname = self._get_fname(fid)
+
             if '/' in fname:
                 try:
                     os.makedirs(str.join('',fname.split('/')[:-1]))
                 except FileExistsError:
                     pass
 
-            # get the correct backend for the file
-            backend = self._get_backend(fid)
+
 
             backend.download(client,bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
 

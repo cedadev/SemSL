@@ -57,8 +57,11 @@ class slS3Backend(slBackend):
         :param fname:
         :return:
         '''
-        print(type(fname))
         conn.upload_file(cloc,bucket,fname)
 
     def list_buckets(self,conn):
         return conn.list_buckets()['Buckets']
+
+    def get_object_size(self,conn,bucket,fname):
+        response = conn.head_object(Bucket=bucket,Key=fname)
+        return response['ContentLength']
