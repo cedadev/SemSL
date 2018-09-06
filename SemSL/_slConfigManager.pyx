@@ -5,7 +5,6 @@ a JSON file in their home directory: ~/.sem-sl.json
 
 import os
 import json
-import types
 from _slExceptions import slIOException, slAPIException
 
 def convert_file_size_string(value):

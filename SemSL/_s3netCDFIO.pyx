@@ -9,6 +9,9 @@ Date:   07/09/2017
 #from _s3Client import *
 from _s3Exceptions import *
 from _CFAClasses import *
+from SemSL._slCacheManager import slCacheManager
+from SemSL._slConfigManager import slConfig
+from SemSL._slConnectionManager import slConnectionManager
 
 cdef class s3netCDFFile:
     """
@@ -135,7 +138,7 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
 
     # create file_details
     file_details = s3netCDFFile(filemode=filemode)
-    '''
+
     # handle S3 file first
     if "s3://" in filename:
 
@@ -146,21 +149,27 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
         s3_ep, s3_bucket_name, s3_object_name = get_endpoint_bucket_object(filename)
 
         # create the s3 client
-        s3_client = s3Client(s3_ep, s3_client_config)
+        sl_cache = slCacheManager()
+        sl_config = slConfig()
+        conn_man = slConnectionManager(sl_config)
+        conn = conn_man.open("s3://minio")
+        s3_client = conn.get()
+
+        #s3_client = s3Client(s3_ep, s3_client_config)
         # get the full url for error messages
-        full_url = s3_client.get_full_url(s3_bucket_name, s3_object_name)
+        #full_url = s3_client.get_full_url(s3_bucket_name, s3_object_name)
 
         # if the filemode is 'r' or 'a' then we have to stream the file to either the cache or to memory
         if filemode == 'r' or filemode == 'a' or filemode == 'r+':
 
             # Check whether the object exists
-            if not s3_client.object_exists(s3_bucket_name, s3_object_name):
-                raise s3IOException("Error: " + full_url + " not found.")
+            if not s3_client.head_object(Bucket=s3_bucket_name, Key=s3_object_name):
+                raise s3IOException("Error: " + s3_object_name + " not found.")
 
             # check whether this object is a netCDF file
             file_type, file_version = _get_netCDF_filetype(s3_client, s3_bucket_name, s3_object_name)
             if file_type == "NOT_NETCDF" or file_version == 0:
-                raise s3IOException("Error: " + full_url + " is not a netCDF file.")
+                raise s3IOException("Error: " + s3_object_name + " is not a netCDF file.")
 
             # retain the filetype
             file_details.format = file_type
@@ -170,18 +179,19 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
             # - user persist to indicate that the file should be cached whatever its size
             if (s3_client.should_stream_to_cache(s3_bucket_name, s3_object_name) and not diskless) or persist:
                 # stream the file to the cache
-                file_details.filename = s3_client.stream_to_cache(s3_bucket_name, s3_object_name)
+                file_details.filename = sl_cache.open(filename,filemode)#s3_client.stream_to_cache(s3_bucket_name, s3_object_name)
             else:
+                raise NotImplementedError
                 # the netCDF library needs to create a dummy file for files created from memory
                 # one dummy file can be used for all of the memory streaming
-                file_details.filename = s3_client.get_cache_location() + "/" + file_type + "_dummy.nc"
+                #file_details.filename = sl_cache.open(filename)#s3_client.get_cache_location() + "/" + file_type + "_dummy.nc"
                 # get the data from the object
-                file_details.memory = s3_client.stream_to_memory(s3_bucket_name, s3_object_name)
+                #file_details.memory = s3_client.stream_to_memory(s3_bucket_name, s3_object_name)
 
         # if the filemode is 'w' then we just have to construct the cache filename and return it
         elif filemode == 'w':
             # get the cache file name
-            file_details.filename = s3_client.get_cachefile_path(s3_bucket_name, s3_object_name)
+            file_details.filename = sl_cache.open(filename,filemode)#s3_client.get_cachefile_path(s3_bucket_name, s3_object_name)
 
         # the created file in
         else:
@@ -189,8 +199,8 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
             raise s3APIException("Mode " + filemode + " not supported.")
 
     # otherwise just return the filename in file_details
-    else:'''
-    file_details.filename = filename
+    else:
+        file_details.filename = filename
 
     return file_details
 

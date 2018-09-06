@@ -10,6 +10,7 @@ import os
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
 from SemSL import Backends
+import SemSL._slUtils as slU
 
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
 #from SemSL._slCacheDB import slCacheDB_lmdb_nest as slCacheDB
@@ -26,37 +27,18 @@ class slCacheManager(object):
         self.cache_loc =  self.sl_config['cache']['location']
         self.access_type = 'r'
 
-
-
-
-    def _get_alias(self,fid):
-
-        # get all host keys
-        hosts = self.sl_config['hosts']
-        host_keys = hosts.keys()
-        # Iterate through config to get all aliases
-        aliases = []
-        for host_name in iter(host_keys):
-            aliases.append(self.sl_config['hosts'][host_name]['alias'])
-
-        for alias in aliases:
-            if alias in fid:
-                return alias
-            else: # return None if alias isn't found in list
-                return None
-
     def _return_client(self,fid):
 
         conn_man = slConnectionManager(self.sl_config)
-        alias = self._get_alias(fid)
+        alias = slU._get_alias(fid)
         conn = conn_man.open(alias)
         client = conn.get()
         return client
 
     def _get_fname(self,fid):
         fname = fid[:]
-        alias = self._get_alias(fid)
-        bucket = self._get_bucket(fid)
+        alias = slU._get_alias(fid)
+        bucket = slU._get_bucket(fid)
         fname = fname.replace(alias,'')
         fname = fname.replace(bucket,'')
         #remove preceeding /
@@ -77,7 +59,6 @@ class slCacheManager(object):
         else:
             return False
 
-
     def _remove_oldest(self,size): # rename
         """ Remove the oldest files from the cache giving at least space for
             the required size.
@@ -87,23 +68,6 @@ class slCacheManager(object):
             rem_id = self.DB.get_least_recent()
             self.DB.remove_entry(rem_id)
             self._remove_file(rem_id)
-
-    def _get_hostname(self,fid):
-
-        alias = self._get_alias(fid)
-        host_name = None
-        try:
-            hosts = self.sl_config["hosts"]
-            for h in hosts:
-                if alias in hosts[h]['alias']:
-                    host_name = h
-        except Exception as e:
-            raise ValueError("Error in config file {} {}".format(
-                                self.sl_config["filename"],
-                                e))
-        return host_name
-
-
     def _get_backend(self,fid):
         """ Get the backend object inorder to interact with the backend
 
@@ -111,7 +75,7 @@ class slCacheManager(object):
         :return:
         """
 
-        host_name = self._get_hostname(fid)
+        host_name = slU._get_hostname(fid)
 
         host_config = self.sl_config["hosts"][host_name]
         backend_name = host_config['backend']
@@ -122,9 +86,9 @@ class slCacheManager(object):
     def _write_to_cache(self,fid,test=False,file_size=None):
         if not self.DB.check_cache(fid):
 
-            bucket = self._get_bucket(fid)
+            bucket = slU._get_bucket(fid)
             client = self._return_client(fid)
-            alias = self._get_alias(fid)
+            alias = slU._get_alias(fid)
             fname = self._get_fname(fid)
             # get the correct backend for the file
             backend = self._get_backend(fid)
@@ -160,18 +124,6 @@ class slCacheManager(object):
         else:
             return 0
 
-    def _get_bucket(self,fid):
-        """
-        Return the bucketname
-        :param fid:
-        :return:
-        """
-        fname = fid[:]
-        alias = self._get_alias(fid)
-        bucket = fname.replace(alias,'')
-        assert bucket.split('/')[0] == ''
-        return bucket.split('/')[1]
-
     def _upload_from_cache(self,fid,test=False):
         """
         Uploads the required file from cache to the backend. Called from close().
@@ -183,7 +135,7 @@ class slCacheManager(object):
         # get location of file
         cloc = self.DB.get_cache_loc(fid)
         client = self._return_client(fid)
-        bucket = self._get_bucket(fid)
+        bucket = slU._get_bucket(fid)
 
         # get backend object
         backend = self._get_backend(fid)
@@ -206,7 +158,7 @@ class slCacheManager(object):
     def _check_whether_posix(self,fid,access_type):
         # Check whether there is an alias in the file path if not, assume it is a posix filepath and pass back the
         # filepath as the cache path, as there is no need to cp from disk to the caching area
-        if self._get_alias(fid) is None:
+        if slU._get_alias(fid) is None:
             # Check whether is looks like a filepath
             # use os.path.exists for a or r
             if access_type == 'r' or access_type == 'a':
@@ -217,9 +169,9 @@ class slCacheManager(object):
 
             return False # returns False if alias not in
         else:
-            return 'Alias exists' # return None if alias is in list
+            return 'Alias exists' # return if alias is in list
 
-    def open(self,fid,access_type='r',diskless=False,test=False,file_size=None):
+    def open(self,fid,access_type,diskless=False,test=False,file_size=None):
         """Retrieve the required filepath for the file from the cache, if the file doesn't exist in cache then pull it
             into cache and update the database.
 
@@ -285,24 +237,33 @@ class slCacheManager(object):
             raise ValueError('Invalid access type')
 
 
-    def close(self,fid,test=False):
+    def close(self,fid,mode,subfiles_accessed,test=False):
         """ Uploads the file from cache, or directly to the backend, if not in cache, will save to cache
         :param test:
         :return: 0 on success
         """
+        # update access db
+        self.DB.update_access_time(fid)
 
         #fid = self.fid
-        if self.access_type == 'r':
-            # update access db
-            self.DB.update_access_time(fid)
-        elif self.access_type == 'a' or self.access_type == 'w':
-            if self.diskless:
-                pass
-                # do something
-            else:
-                # do something else
-                if self.DB.check_cache(fid):
-                    self._upload_from_cache(fid)
+        if mode == 'r':
+            pass
+        elif mode == 'a' or mode== 'w':
+            #if self.diskless:
+            #   raise NotImplementedError
+            #    # do something
+            #else:
+            # do something else
+            print (fid)
+            print (fid)
+            if self._check_whether_posix(fid,mode) == 'Alias exists':
+                self._upload_from_cache(fid)
+                # upload subfiles
+                for sf in subfiles_accessed:
+                    subfid = slU._get_alias(fid)+'/'+slU._get_bucket(fid)+'/'+sf
+                    self.DB.add_entry(subfid)
+                    self._upload_from_cache(subfid)
+
             pass
         else:
             raise ValueError('Access mode not supported')

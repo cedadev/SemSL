@@ -7,14 +7,18 @@ import unittest
 import numpy as np
 import os
 import sys
+from glob import glob
 
 from SemSL.Frontends.SL_netCDF4 import s3Dataset as Dataset
+from SemSL._slCacheManager import slCacheManager
+from SemSL._slConfigManager import slConfig
+from SemSL._slConnectionManager import slConnectionManager
 
 FNAME = './testfile.nc'
 VARNAME = 'var'
 DIMSIZE = 20
 
-class testWrite(unittest.TestCase):
+class testReadWrite(unittest.TestCase):
 
     def test_1_posix_write(self):
         self.f = Dataset('./testnc.nc','w')
@@ -42,7 +46,7 @@ class testWrite(unittest.TestCase):
         self.var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
         self.f.close()
 
-    def test_2_s3_write(self):
+    def test_4_s3_write(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'w')
         self.f.test = 'Created for SemSL tests'
 
@@ -68,7 +72,9 @@ class testWrite(unittest.TestCase):
         self.var[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
         self.f.close()
 
-    def test_3_read_posix(self):
+        # Check what is in the cacheDB?
+
+    def test_2_read_posix(self):
         self.f = Dataset('./testnc.nc', 'r')
 
         v = self.f.getVariable('var')
@@ -77,12 +83,161 @@ class testWrite(unittest.TestCase):
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 
-    def test_4_read_s3(self):
+    '''def test_5_read_s3(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'r')
         v = self.f.getVariable('var')
         data = v[:]
         self.assertTrue(data[0,0,0,0])
         self.f.close()
+    '''
+    '''def test_3_remove_posix(self):
+        os.remove('./testnc.nc')
+        subfiles = glob('./testnc/*.nc')
+        for f in subfiles:
+            os.remove(f)
+        os.rmdir('testnc')
+    '''
+    '''def test_6_remove_s3(self):
+        sl_cache = slCacheManager()
+        sl_config = slConfig()
+        cache_loc = sl_config['cache']['location']
+        conn_man = slConnectionManager(sl_config)
+        conn = conn_man.open("s3://minio")
+        sl_cache._clear_cache()
+        s3 = conn.get()
+        s3.delete_object(Bucket='databucket',Key='testnc.nc')
+        s3.remove_bucket(Bucket='databucket')
+    '''
+class TestMethods_posix(unittest.TestCase):
+    def setUp(self):
+        # Create test dataset
+        self.f = Dataset('./testnc.nc', 'w')
+        self.f.test = 'Created for SemSL tests'
+
+        dim1 = self.f.createDimension('T', DIMSIZE)
+        dim1d = self.f.createVariable('T', 'i4', ('T',))
+        dim1d[:] = range(DIMSIZE)
+        dim2 = self.f.createDimension('Z', DIMSIZE)
+        dim2d = self.f.createVariable('Z', 'i4', ('Z',))
+        dim2d[:] = range(DIMSIZE)
+        dim3 = self.f.createDimension('Y', DIMSIZE)
+        dim3d = self.f.createVariable('Y', 'i4', ('Y',))
+        dim3d[:] = range(DIMSIZE)
+        dim4 = self.f.createDimension('X', DIMSIZE)
+        dim4d = self.f.createVariable('X', 'i4', ('X',))
+        dim4d[:] = range(DIMSIZE)
+        dim1d.axis = "T"
+        dim2d.axis = "Z"
+        dim3d.axis = "Y"
+        dim4d.axis = "X"
+        self.var = self.f.createVariable(VARNAME, 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
+        self.var.units = 'test unit'
+        np.random.seed(0)
+        self.var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+        self.f.close()
+
+    def tearDown(self):
+        # remove test file
+        os.remove('./testnc.nc')
+        subfiles = glob('./*.nc')
+        for f in subfiles:
+            os.remove(f)
+        os.rmdir('testnc')
+
+class TestMethods_s3(unittest.TestCase):
+    def setUp(self):
+        pass
+
+"""    
+
+Questions:
+    - do subfiles need to retain the attributes of the variable in the master file? 
+        - no, changing attributes for variables should be fine because the master file is referenced for these
+    - what happens when the varible name is changed??
+    
+Ideas for tests
+    - multi variables
+    - which methods? (don't need to test the ones passed straight through)  
+        Dataset:
+            getVariables
+            ncattrs
+            createDimension
+            createVariable
+            close
+            flush
+            sync
+            cmptypes
+            createCompoundType
+            createEnumType
+            createGroup
+            createVLType
+            data_model
+            delncattr
+            dimensions
+            disk_format
+            enumtypes
+            file_format
+            filepath
+            get_variables_by_attribute
+            getncattr
+            parent
+            path
+            renameAttribute
+            renameDimension
+            renameGroup
+            renameVariable
+            set_auto_chartostring
+            set_auto_mask
+            set_auto_maskandscale
+            set_auto_scale
+            set_fill_off
+            set_fill_on
+            setncattr
+            setncattr_string
+            setncattrs
+        Variable:
+            _accessed_subfiles
+            __repr__
+            __array__
+            __unicode__
+            name
+            name
+            datatype
+            shape
+            _shape
+            _size
+            _dimensions
+            group
+            ncattrs
+            setncattr
+            setncattr_string
+            setncatts
+            getncattr
+            delncattr
+            filters
+            endian
+            chunking
+            get_var_chunk_cache
+            set_var_chunk_cache
+            __delattr__
+            __setattr__
+            __getattr__
+            renameAttribute
+            __len__
+            assignValue
+            getValue
+            set_auto_chartostring
+            set_auto_maskandscale
+            set_auto_scale
+            set_auto_mask
+            __reduce__
+            __getitem__
+            __setitem__
+    
+
+
+"""
+
 
 """ This refers to old lib
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~POSIX FILE TESTS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#

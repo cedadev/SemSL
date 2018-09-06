@@ -3,6 +3,7 @@
 
 #This module inherits from the standard netCDF4 implementation
 # import as UniData netCDF4 to avoid confusion with the S3 module
+
 import netCDF4._netCDF4 as netCDF4
 from SemSL._s3netCDFIO import get_netCDF_file_details, put_netCDF_file, put_CFA_file
 from SemSL._s3Exceptions import *
@@ -16,10 +17,11 @@ from SemSL._baseInterface import _baseInterface as interface
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
 from SemSL._slCacheManager import slCacheManager as slCache
 
-
+import SemSL._slUtils as slU
 
 import os
-from collections import OrderedDict
+import itertools
+from collections import OrderedDict, deque
 
 # these are class attributes that only exist at the python level (not in the netCDF file).
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
@@ -29,7 +31,7 @@ _s3_private_atts = [
 ]
 netCDF4._private_atts.extend(_s3_private_atts)
 
-class s3Dataset(netCDF4.Dataset):
+class s3Dataset(object):
     """
        Inherit the UniData netCDF4 Dataset class and override some key member functions to allow the
        read and write of netCDF file to an object store accessed via an AWS S3 HTTP API.
@@ -49,6 +51,7 @@ class s3Dataset(netCDF4.Dataset):
         # we've passed all the details of detecting whether this is an S3 or POSIX file to the function
         # get_netCDFFilename(filename).  Diskless == always_stream
 
+
         # get the file details
         self._file_details = get_netCDF_file_details(filename, mode, diskless, persist)
         self._cfa_variables = OrderedDict()
@@ -56,27 +59,35 @@ class s3Dataset(netCDF4.Dataset):
         # get the s3ClientConfig for paths to the cache and max file size
         self._s3_client_config = slConfig()
 
+        # list of subfiles accessed since intialistion
+        self.subfiles_accessed = deque()
+
         DB = slCacheDB()
         slC = slCache()
+
+        self.mode = mode
 
         # switch on the read / write / append mode
         if mode == 'r' or mode == 'a' or mode == 'r+':             # read
             # check whether the memory has been set from get_netCDF_file_details (i.e. the file is streamed to memory)
 
             c_file = slC.open(filename, mode)
+            #self.ncD = netCDF4.Dataset(c_file, mode)
             if self._file_details.memory != "" or diskless:
                 # we have to first create the dummy file (name held in file_details.memory) - check it exists before creating it
                 if not os.path.exists(self._file_details.filename):
                     temp_file = netCDF4.Dataset(c_file, 'w', format=self._file_details.format).close()
                 # create the netCDF4 dataset from the data, using the temp_file
-                netCDF4.Dataset.__init__(self, self._file_details.filename, mode=mode, clobber=clobber,
+                    self.ncD = netCDF4.Dataset( self._file_details.filename, mode=mode, clobber=clobber,
                                          format=self._file_details.format, diskless=True, persist=False,
                                          keepweakref=keepweakref, memory=self._file_details.memory, **kwargs)
+                    self.variables = self.ncD.variables
             else:
                 # not in memory but has been streamed to disk
-                netCDF4.Dataset.__init__(self, c_file, mode=mode, clobber=clobber,
+                self.ncD = netCDF4.Dataset(c_file, mode=mode, clobber=clobber,
                                          format=self._file_details.format, diskless=False, persist=persist,
                                          keepweakref=keepweakref, memory=None, **kwargs)
+                self.variables = self.ncD.variables
 
             # check if file is a CFA file, for standard netCDF files
             try:
@@ -88,7 +99,7 @@ class s3Dataset(netCDF4.Dataset):
             if cfa:
                 # Get the host name in order to get the specific settings
                 try:
-                    host_name = slC._get_hostname(self._file_details.filename)
+                    host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._s3_client_config['hosts'][host_name]['object_size']
                 except ValueError:
                     obj_size = 0
@@ -108,9 +119,12 @@ class s3Dataset(netCDF4.Dataset):
             else:
                 self._file_details.cfa_file = None
 
+
+
         elif mode == 'w':           # write
             # check the format for writing - allow CFA4 in arguments and default to it as well
             # we DEFAULT to CFA4 for writing to S3 object stores so as to distribute files across objects
+            #self.ncD = netCDF4.Dataset(c_file, mode)
             if format == 'CFA4' or format == 'DEFAULT':
                 self._file_details.format = 'NETCDF4'
                 self._file_details.cfa_file = CFAFile()
@@ -133,9 +147,11 @@ class s3Dataset(netCDF4.Dataset):
             if self._file_details.s3_uri != "" and diskless:
                 persist = True
             c_file = slC.open(filename,mode)
-            netCDF4.Dataset.__init__(self, c_file, mode=mode, clobber=clobber,
+            self.ncD = netCDF4.Dataset(c_file, mode=mode, clobber=clobber,
                                      format=self._file_details.format, diskless=diskless, persist=persist,
                                      keepweakref=keepweakref, memory=None, **kwargs)
+            self.variables = self.ncD.variables
+
         else:
             # no other modes are supported
             raise s3APIException("Mode " + mode + " not supported.")
@@ -145,11 +161,9 @@ class s3Dataset(netCDF4.Dataset):
         """Allows objects to be used with a `with` statement."""
         return self
 
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Allows objects to be used with a `with` statement."""
         self.close()
-
 
     def getVariable(self, name):
         """Get an s3 / cfa variable or just a standard netCDF4 variable,
@@ -163,7 +177,6 @@ class s3Dataset(netCDF4.Dataset):
         else:
             return self.variables[name]
 
-
     def getVariables(self):
         """Get a list of the variable names"""
         names = []
@@ -173,10 +186,9 @@ class s3Dataset(netCDF4.Dataset):
             names.append(n)
         return names
 
-
     def createDimension(self, dimname, size=None):
         """Overloaded version of createDimension that records the dimension info into a CFADim instance"""
-        netCDF4.Dataset.createDimension(self, dimname, size)
+        netCDF4.Dataset.createDimension(self.ncD, dimname, size)
         if self._file_details.cfa_file is not None:
             # add to the dimensions
             self._file_details.cfa_file.cfa_dims[dimname] = CFADim(dim_name=dimname, dim_len=size)
@@ -194,7 +206,7 @@ class s3Dataset(netCDF4.Dataset):
         slC = slCache()
 
         if self._file_details.cfa_file is None:
-            var = netCDF4.Dataset.createVariable(self, varname, datatype, dimensions, zlib,
+            var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, dimensions, zlib,
                     complevel, shuffle, fletcher32, contiguous,
                     chunksizes, endian, least_significant_digit,
                     fill_value, chunk_cache)
@@ -209,14 +221,14 @@ class s3Dataset(netCDF4.Dataset):
             # is the variable name in the dimensions?
             if varname in self.dimensions or var_shape == []:
                 # it is so create the Variable with dimensions
-                var = netCDF4.Dataset.createVariable(self, varname, datatype, dimensions, zlib,
+                var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, dimensions, zlib,
                         complevel, shuffle, fletcher32, contiguous,
                         chunksizes, endian, least_significant_digit,
                         fill_value, chunk_cache)
                 return var
             else:
                 # it is not so create a dimension free version
-                var = netCDF4.Dataset.createVariable(self, varname, datatype, (), zlib,
+                var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, (), zlib,
                         complevel, shuffle, fletcher32, contiguous,
                         chunksizes, endian, least_significant_digit,
                         fill_value, chunk_cache)
@@ -257,7 +269,7 @@ class s3Dataset(netCDF4.Dataset):
 
                 # Get the host name in order to get the specific settings
                 try:
-                    host_name = slC._get_hostname(self._file_details.filename)
+                    host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._s3_client_config['hosts'][host_name]['object_size']
                 except ValueError:
                     obj_size = 0
@@ -282,6 +294,25 @@ class s3Dataset(netCDF4.Dataset):
 
     def close(self):
         """Close the netCDF file.  If it is a S3 file and the mode is write then upload to the storage."""
+        # for each variable, get the accessed subfiles
+
+        sl_config = slConfig()
+
+        for v in self._cfa_variables.values():
+            self.subfiles_accessed.append(v._accessed_subfiles())
+        # flatten the list
+        subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
+        try:
+            subfiles = subfiles[0]
+        except IndexError:
+            pass
+
+        # construct backend path for each subfile
+        if not self._file_details.s3_uri == '':
+            cache_path = sl_config['cache']['location']
+            subfiles = [sf.replace(cache_path,'') for sf in subfiles]
+
+
         if (self._file_details.filemode == 'w' or
                 self._file_details.filemode == "r+" or
                 self._file_details.filemode == 'a'):
@@ -290,17 +321,131 @@ class s3Dataset(netCDF4.Dataset):
                 self.setncattr("Conventions", conv_attrs + " CFA-0.4")
             except:
                 self.setncattr("Conventions", "CFA-0.4")
-        netCDF4.Dataset.close(self)
+        netCDF4.Dataset.close(self.ncD)
         slC = slCache()
-        slC.close(self._file_details.filename)
+        if self._file_details.s3_uri == '':
+            slC.close(self._file_details.filename,self.mode,self.subfiles_accessed)
+        else:
+            slC.close(self._file_details.s3_uri,self.mode,subfiles)
 
+    def flush(self):
+        return self.sync()
+
+    def sync(self):
+        """ Overloads the netcdf4 method which syncs to disk.
+            Syncs the open dataset to disk and backend as required.
+        """
+        raise NotImplementedError
+
+    @property
+    def cmptypes(self):
+        return self.ncD.cmptypes
+
+    def createCompoundType(self, datatype, datatype_name):
+        return self.ncD.createCompoundType(datatype, datatype_name)
+
+    def createEnumType(self,datatype,datatype_name,enum_dict):
+        return self.ncD.createEnumType(datatype,datatype_name,enum_dict)
+
+    def createGroup(self,groupname):
+        return self.ncD.createGroup(groupname)
+
+    def createVLType(self, datatype, datatype_name):
+        return self.ncD.createVLType(datatype,datatype_name)
+
+    @property
+    def data_model(self):
+        return self.ncD.data_model
+
+    def delncattr(self,name,value):
+        return self.ncD.delncattr(name,value)
+
+    @property
+    def dimensions(self):
+        return self.ncD.dimensions
+
+    @property
+    def disk_format(self):
+        return self.ncD.disk_format
+
+    @property
+    def enumtypes(self):
+        return self.ncD.enumtypes
+
+    @property
+    def file_format(self):
+        return self.ncD.file_format
+
+    def filepath(self,encoding=None):
+        return self.ncD.filepath(encoding)
+
+    def get_variables_by_attribute(self,**kwargs):
+        return self.ncD.get_variables_by_attributes(**kwargs)
+
+    def getncattr(self,name):
+        return self.ncD.getncattr(name)
+
+    def ncattrs(self):
+        return self.ncD.ncattrs()
+
+    @property
+    def parent(self):
+        return self.ncD.parent
+
+    @property
+    def path(self):
+        return self.ncD.path
+
+    def renameAttribute(self,oldname,newname):
+        return self.ncD.renameAttribute(oldname,newname)
+
+    def renameDimension(self,oldname,newname):
+        return self.ncD.renameDimension(oldname,newname)
+
+    def renameGroup(self,oldname,newname):
+        return self.ncD.renameGroup(oldname,newname)
+
+    def renameVariable(self,oldname,newname):
+        raise NotImplementedError('This has been disabled due to clashing with the subfile naming conventions.')
+        #return self.ncD.renameVariable(oldname,newname)
+
+    def set_auto_chartostring(self,True_or_False):
+        return self.ncD.set_auto_chartostring(True_or_False)
+
+    def set_auto_mask(self,True_or_False):
+        return  self.ncD.set_auto_mask(True_or_False)
+
+    def set_auto_maskandscale(self,True_or_False):
+        return self.ncD.set_auto_maskandscale(True_or_False)
+
+    def set_auto_scale(self,True_or_False):
+        return self.ncD.set_auto_scale(True_or_False)
+
+    def set_fill_off(self):
+        return self.ncD.set_fill_off()
+
+    def set_fill_on(self):
+        return self.ncD.set_fill_on()
+
+    def setncattr(self,name,value):
+        return self.ncD.setncattr(name,value)
+
+    def setncattr_string(self,name,value):
+        return self.ncD.setncattr_string(name,value)
+
+    def setncattrs(self,attdict):
+        return self.ncD.setncatts(attdict)
+
+    @property
+    def vltypes(self):
+        return self.ncD.vltypes
 
 class s3Variable(object):
     """
       Reimplement the UniData netCDF4 Variable class and override some key methods so as to enable CFA and S3 functionality
     """
 
-    _private_atts = ["_cfa_var", "_nc_var", "_cfa_file", "_init_params"]
+    _private_atts = ["_cfa_var", "_nc_var", "_cfa_file", "_init_params","subfiles_accessed"]
 
     def __init__(self, nc_var, cfa_file, cfa_var, init_params = {}):
         """Keep a reference to the nc_file, nc_var and cfa_var"""
@@ -308,11 +453,15 @@ class s3Variable(object):
         self._nc_var  = nc_var
         self._cfa_var = cfa_var
         self._cfa_file = cfa_file
+        self.subfiles_accessed = []
 
     """There now follows a long list of functions, matching the netCDF4.Variable interface.
        The only functions we need to override are __getitem__ and __setitem__, so as to
        use the CFA information in cfa_var.
        The other methods we need to pass through to the _nc_var member variable."""
+
+    def _accessed_subfiles(self):
+        return self.subfiles_accessed
 
     def __repr__(self):
         return str(self._nc_var)
@@ -527,4 +676,6 @@ class s3Variable(object):
         # pass in the required parameters for writing
         write_interface.set_write_params(data, self._nc_var, self._cfa_var, self._cfa_file,
                                          self._init_params['write_threads'], self._init_params)
-        write_interface.write(subset_parts, elem_slices)
+        pret = write_interface.write(subset_parts, elem_slices)
+
+        self.subfiles_accessed.append(pret)

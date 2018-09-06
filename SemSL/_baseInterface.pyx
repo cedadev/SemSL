@@ -55,8 +55,7 @@ class _baseInterface(object):
         # get the variable
         nc_var = nc_file.variables[part.subarray.ncvar]
         return_queue.put([nc_var, py_source_slice, py_target_slice])
-
-        slC.close(file_details)
+        return nc_file
 
 
     def _write_partition(self, part, elem_slices):
@@ -122,10 +121,10 @@ class _baseInterface(object):
         # get the source and target slices - these are flipped in relation to __getitem__
         py_target_slice, py_source_slice = get_source_target_slices(part, elem_slices)
         # copy the data in
-        var[py_target_slice] = self._data[py_source_slice]
+        var[tuple(py_target_slice)] = self._data[tuple(py_source_slice)]
         ncfile.close()
-        slC.close(part.subarray.file)
-        return
+
+        return part.subarray.file
 
 
     def name():
@@ -163,23 +162,29 @@ class _baseInterface(object):
         # and then move it into memory afterwards
         for part in partitions:
             return_queue = Queue()
-            self._read_partition(0, return_queue, part, elem_slices)
+            nc_file = self._read_partition(0, return_queue, part, elem_slices)
             # collect the data
             ret_vals = return_queue.get()
             nc_var = ret_vals[0]
             py_source_slice = ret_vals[1]
             py_target_slice = ret_vals[2]
-            self._data[py_target_slice] = nc_var[py_source_slice]
+            self._data[tuple(py_target_slice)] = nc_var[tuple(py_source_slice)]
+            nc_file.close()
 
 
     def write(self, partitions, elem_slices):
         """Write (in serial) the list of partitions which are in the subgroup determined by S3Variable.__setitem__"""
 
         # write all the paritions (serially)
+        partitions_accessed = []
         for part in partitions:
-            self._write_partition(part, elem_slices)
+            p = self._write_partition(part, elem_slices)
+            partitions_accessed.append(p)
+
+        return partitions_accessed
 
 
+    ''' This shouldn't be needed anymore
     def upload(self):
         """Upload (in serial) the master array file and subarray files for the partitions."""
         # upload the master array file to s3
@@ -200,3 +205,4 @@ class _baseInterface(object):
                 if os.path.exists(fname):
                     put_netCDF_file(p.subarray.file)
                     #os.remove(fname)
+    '''

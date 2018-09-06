@@ -8,6 +8,7 @@ import pickle
 import collections
 import datetime
 from SemSL._slConfigManager import slConfig
+import SemSL._slUtils as slU
 
 
 # We need a database interface to not use lmdb potentially without a refactor
@@ -400,10 +401,16 @@ class slCacheDB_lmdb(slCacheDB):
             cursor.put(key_ct.encode(), sDate.encode())
             cursor.put(key_at.encode(), sDate.encode())
             cursor.put(key_fs.encode(), str(size).encode())
+
+            # remove alias and bucket from fid (can't assume last element in path is whole filepath)
+            bucket = slU._get_bucket(fid)
+            alias = slU._get_alias(fid)
+            fpath =  fid.replace(bucket,'')
+            fpath = fpath.replace(alias,'')
             if self.cache_loc[-1] != '/':
-                cache_loc = '{}/{}'.format(self.cache_loc, fid.split('/')[-1])
+                cache_loc = '{}/{}'.format(self.cache_loc, fpath)
             else:
-                cache_loc = '{}{}'.format(self.cache_loc, fid.split('/')[-1])
+                cache_loc = '{}{}'.format(self.cache_loc, fpath)
             cursor.put(key_cl.encode(), cache_loc.encode())
 
     def remove_entry(self,fid):

@@ -65,3 +65,10 @@ class slS3Backend(slBackend):
     def get_object_size(self,conn,bucket,fname):
         response = conn.head_object(Bucket=bucket,Key=fname)
         return response['ContentLength']
+
+    def object_exists(self,conn,bucket,fname):
+        try:
+            conn.head_object(Bucket=bucket,Key=fname)
+            return True
+        except:
+            return False
