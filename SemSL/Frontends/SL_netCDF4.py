@@ -5,7 +5,7 @@
 # import as UniData netCDF4 to avoid confusion with the S3 module
 
 import netCDF4._netCDF4 as netCDF4
-from SemSL._s3netCDFIO import get_netCDF_file_details, put_netCDF_file, put_CFA_file
+from SemSL._s3netCDFIO import get_netCDF_file_details
 from SemSL._s3Exceptions import *
 from SemSL._CFAClasses import *
 from SemSL._CFAFunctions import *
@@ -27,7 +27,7 @@ from collections import OrderedDict, deque
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
 _s3_private_atts = [
  # member variables
- '_file_details', '_cfa_variables', '_s3_client_config',
+ '_file_details', '_cfa_variables', '_s3_client_config', 'filename'
 ]
 netCDF4._private_atts.extend(_s3_private_atts)
 
@@ -53,6 +53,7 @@ class s3Dataset(object):
 
 
         # get the file details
+        self.filename = filename
         self._file_details = get_netCDF_file_details(filename, mode, diskless, persist)
         self._cfa_variables = OrderedDict()
 
@@ -237,10 +238,11 @@ class s3Dataset(object):
                 #     base_filename = self._file_details.s3_uri[:self._file_details.s3_uri.rfind(".")]
                 # else:
                 #     base_filename = self._file_details.filename[:self._file_details.filename.rfind(".")]
-                base_filename = self._file_details.filename[:self._file_details.filename.rfind(".")]
+                base_filename = self.filename.replace('.nc','')# changed to introduce backend file name self._file_details.filename[:self._file_details.filename.rfind(".")]
 
                 # create the partitions, i.e. a list of CFAPartition, and get the partition shape
                 # get the max file size from the s3ClientConfig
+                print('BASE FILENAME: {}'.format(base_filename))
                 pmshape, partitions = create_partitions(base_filename, self, dimensions,
                                                         varname, var_shape, var.dtype,
                                                         max_file_size=100000,

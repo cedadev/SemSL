@@ -14,6 +14,8 @@ from SemSL._slCacheManager import slCacheManager
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
 
+from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
+
 FNAME = './testfile.nc'
 VARNAME = 'var'
 DIMSIZE = 20
@@ -71,8 +73,30 @@ class testReadWrite(unittest.TestCase):
         np.random.seed(0)
         self.var[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
         self.f.close()
+        # TODO: Check what is in the cacheDB and cache area?
+        slDB = slCacheDB()
+        allcachedfids = slDB.get_all_fids()
+        cacheareafiles = glob('/home/matthew/cachearea/*.nc')
+        cacheareasubfiles = glob('/home/matthew/cachearea/testnc/*.nc')
 
-        # Check what is in the cacheDB?
+        all_cache = []
+        for i in cacheareasubfiles:
+            all_cache.append(i.split('/')[-1])
+        for i in cacheareafiles:
+            all_cache.append(i.split('/')[-1])
+
+        allcached = []
+        for i in allcachedfids:
+            allcached.append(i.split('/')[-1])
+
+        all_cache.sort()
+        print(all_cache)
+        allcached.sort()
+        print(allcached)
+        self.assertEqual(all_cache,allcached)
+        # remove from cache
+        sl_cache = slCacheManager()
+        sl_cache._clear_cache()
 
     def test_2_read_posix(self):
         self.f = Dataset('./testnc.nc', 'r')
@@ -83,31 +107,39 @@ class testReadWrite(unittest.TestCase):
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 
-    '''def test_5_read_s3(self):
+    def test_5_read_s3(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'r')
         v = self.f.getVariable('var')
         data = v[:]
         self.assertTrue(data[0,0,0,0])
         self.f.close()
-    '''
-    '''def test_3_remove_posix(self):
+
+    def test_3_remove_posix(self):
         os.remove('./testnc.nc')
         subfiles = glob('./testnc/*.nc')
         for f in subfiles:
             os.remove(f)
         os.rmdir('testnc')
-    '''
-    '''def test_6_remove_s3(self):
+
+        sl_cache = slCacheManager()
+        sl_cache._clear_cache()
+
+    def test_6_remove_s3(self):
         sl_cache = slCacheManager()
         sl_config = slConfig()
+        slDB = slCacheDB()
+        print(slDB.get_all_fids())
         cache_loc = sl_config['cache']['location']
         conn_man = slConnectionManager(sl_config)
         conn = conn_man.open("s3://minio")
         sl_cache._clear_cache()
         s3 = conn.get()
+        subfiles = s3.list_objects(Bucket='databucket',Prefix='testnc/')['Contents']
+        for sf in subfiles:
+            s3.delete_object(Bucket='databucket',Key=sf['Key'])
         s3.delete_object(Bucket='databucket',Key='testnc.nc')
-        s3.remove_bucket(Bucket='databucket')
-    '''
+        s3.delete_bucket(Bucket='databucket')
+
 class TestMethods_posix(unittest.TestCase):
     def setUp(self):
         # Create test dataset
@@ -152,11 +184,11 @@ class TestMethods_s3(unittest.TestCase):
 
 Questions:
     - do subfiles need to retain the attributes of the variable in the master file? 
-        - no, changing attributes for variables should be fine because the master file is referenced for these
-    - what happens when the varible name is changed??
+    - what happens when the varible name is changed?? Change in sub files as well -- retain all the variable information in the sub files as well
     
 Ideas for tests
     - multi variables
+    - read a non CFA file??? (I think I removed this functionality)
     - which methods? (don't need to test the ones passed straight through)  
         Dataset:
             getVariables

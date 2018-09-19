@@ -12,6 +12,10 @@ from _CFAClasses import *
 from SemSL._slCacheManager import slCacheManager
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
+import SemSL._slUtils as slU
+from SemSL import Backends
+
+SL_CONFIG = slConfig()
 
 cdef class s3netCDFFile:
     """
@@ -61,7 +65,7 @@ cdef class s3netCDFFile:
         return ret_str
 
 
-def _get_netCDF_filetype(s3_client, bucket_name, object_name):
+def _get_netCDF_filetype(s3_client, bucket_name, object_name, backend):
     """
        Read the first four bytes from the stream and interpret the magic number.
        See NC_interpret_magic_number in netcdf-c/libdispatch/dfile.c
@@ -78,25 +82,25 @@ def _get_netCDF_filetype(s3_client, bucket_name, object_name):
        :return: string filetype
     """
     # open the url/bucket/object as an s3_object and read the first 4 bytes
-    try:
-        s3_object = s3_client.get_partial(bucket_name, object_name, 0, 4)
-    except BaseException:
-        raise s3IOException(s3_client.get_full_url(bucket_name, object_name) + " not found")
+    #try:
+    # todo create get_partial backend method to retrieve first 4 bytes, can just return the 'data', and remove .data
+    s3_object = backend.get_partial(s3_client, bucket_name, object_name, 0, 4)
+    #except BaseException:
+    #    raise s3IOException(s3_client.get_full_url(bucket_name, object_name) + " not found")
 
     # start with NOT_NETCDF as the file_type
     file_version = 0
     file_type = 'NOT_NETCDF'
-
     # check whether it's a netCDF file (how can we tell if it's a NETCDF4_CLASSIC file?
-    if s3_object.data[1:5] == 'HDF':
+    if s3_object[1:5] == 'HDF':
         # netCDF4 (HD5 version)
         file_type = 'NETCDF4'
         file_version = 5
-    elif (s3_object.data[0] == '\016' and s3_object.data[1] == '\003' and s3_object.data[2] == '\023' and s3_object.data[3] == '\001'):
+    elif (s3_object[0] == '\016' and s3_object[1] == '\003' and s3_object[2] == '\023' and s3_object[3] == '\001'):
         file_type = 'NETCDF4'
         file_version = 4
-    elif s3_object.data[0:3] == 'CDF':
-        file_version = ord(s3_object.data[3])
+    elif s3_object[0:3] == 'CDF':
+        file_version = ord(s3_object[3])
         if file_version == 1:
             file_type = 'NETCDF3_CLASSIC'
         elif file_version == '2':
@@ -110,20 +114,35 @@ def _get_netCDF_filetype(s3_client, bucket_name, object_name):
         file_version = 0
     return file_type, file_version
 
+def _get_conn(s3_ep,sl_cache):
+    """
+    return end point object
+    :param s3_ep: alias from config
+    :return:
+    """
+    sl_config = slConfig()
+    conn_man = slConnectionManager(sl_config)
+    conn = conn_man.open(s3_ep)
+    s3_client = conn.get()
+    return s3_client
 
-def get_endpoint_bucket_object(filename):
-    """Return the endpoint, bucket and object, split out from the filename"""
-    # Get the server, bucket and object from the URI: split the URI on "/" separator
-    split_ep = filename.split("/")
-    # get the s3 endpoint first
-    s3_ep = "s3://" + split_ep[2]
-    # now get the bucketname
-    s3_bucket_name = split_ep[3]
-    # finally get the object (prefix + object name) from the remainder of the
-    s3_object_name = "/".join(split_ep[4:])
+def _get_backend(endpoint):
+    host_name = None
+    try:
+        hosts = SL_CONFIG["hosts"]
+        for h in hosts:
+            if endpoint in hosts[h]['alias']:
+                host_name = h
+    except Exception as e:
+        raise slIOException("Error in config file {} {}".format(
+                            SL_CONFIG["filename"],
+                            e))
+    host_config = SL_CONFIG["hosts"][host_name]
+    backend_name = host_config['backend']
 
-    return s3_ep, s3_bucket_name, s3_object_name
+    backend = Backends.get_backend_from_id(backend_name)()
 
+    return backend
 
 def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=False, s3_client_config=None):
     """
@@ -146,14 +165,18 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
         file_details.s3_uri = filename
 
         # get the endpoint, bucket name, object name
-        s3_ep, s3_bucket_name, s3_object_name = get_endpoint_bucket_object(filename)
+        s3_ep = slU._get_alias(filename)
+        s3_bucket_name =slU._get_bucket(filename)
+        s3_object_name = slU._get_key(filename)
 
-        # create the s3 client
+
         sl_cache = slCacheManager()
-        sl_config = slConfig()
-        conn_man = slConnectionManager(sl_config)
-        conn = conn_man.open("s3://minio")
-        s3_client = conn.get()
+
+        # coonection object
+        conn = _get_conn(s3_ep,sl_cache)
+
+        # return correct backend
+        backend = _get_backend(s3_ep)
 
         #s3_client = s3Client(s3_ep, s3_client_config)
         # get the full url for error messages
@@ -163,30 +186,32 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
         if filemode == 'r' or filemode == 'a' or filemode == 'r+':
 
             # Check whether the object exists
-            if not s3_client.head_object(Bucket=s3_bucket_name, Key=s3_object_name):
+            if not backend.get_head_object(conn,s3_bucket_name,s3_object_name):
                 raise s3IOException("Error: " + s3_object_name + " not found.")
 
             # check whether this object is a netCDF file
-            file_type, file_version = _get_netCDF_filetype(s3_client, s3_bucket_name, s3_object_name)
+            file_type, file_version = _get_netCDF_filetype(conn, s3_bucket_name, s3_object_name, backend)
             if file_type == "NOT_NETCDF" or file_version == 0:
                 raise s3IOException("Error: " + s3_object_name + " is not a netCDF file.")
 
             # retain the filetype
             file_details.format = file_type
 
+
             # check whether we should stream this object
             # - use diskless to indicate the file should be read into memory whatever its size
             # - user persist to indicate that the file should be cached whatever its size
-            if (s3_client.should_stream_to_cache(s3_bucket_name, s3_object_name) and not diskless) or persist:
-                # stream the file to the cache
-                file_details.filename = sl_cache.open(filename,filemode)#s3_client.stream_to_cache(s3_bucket_name, s3_object_name)
-            else:
-                raise NotImplementedError
-                # the netCDF library needs to create a dummy file for files created from memory
-                # one dummy file can be used for all of the memory streaming
-                #file_details.filename = sl_cache.open(filename)#s3_client.get_cache_location() + "/" + file_type + "_dummy.nc"
-                # get the data from the object
-                #file_details.memory = s3_client.stream_to_memory(s3_bucket_name, s3_object_name)
+            # TODO: reintroduce streaming files to memory
+            #if (s3_client.should_stream_to_cache(s3_bucket_name, s3_object_name) and not diskless) or persist:
+            #    # stream the file to the cache
+            file_details.filename = sl_cache.open(filename,filemode)#s3_client.stream_to_cache(s3_bucket_name, s3_object_name)
+            #else:
+            #    raise NotImplementedError
+            #    # the netCDF library needs to create a dummy file for files created from memory
+            #    # one dummy file can be used for all of the memory streaming
+            #    #file_details.filename = sl_cache.open(filename)#s3_client.get_cache_location() + "/" + file_type + "_dummy.nc"
+            #    # get the data from the object
+            #    #file_details.memory = s3_client.stream_to_memory(s3_bucket_name, s3_object_name)
 
         # if the filemode is 'w' then we just have to construct the cache filename and return it
         elif filemode == 'w':
@@ -203,6 +228,21 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
         file_details.filename = filename
 
     return file_details
+
+''' This shouldn't be needed but retaining for now
+
+def get_endpoint_bucket_object(filename):
+    """Return the endpoint, bucket and object, split out from the filename"""
+    # Get the server, bucket and object from the URI: split the URI on "/" separator
+    split_ep = filename.split("/")
+    # get the s3 endpoint first
+    s3_ep = "s3://" + split_ep[2]
+    # now get the bucketname
+    s3_bucket_name = split_ep[3]
+    # finally get the object (prefix + object name) from the remainder of the
+    s3_object_name = "/".join(split_ep[4:])
+
+    return s3_ep, s3_bucket_name, s3_object_name
 
 
 def put_netCDF_file(filename):
@@ -280,3 +320,4 @@ def put_CFA_file(filename, max_file_size=-1, format="NETCDF4"):
         for varnum in range(0, cfa_ma.get_number_of_variables()):
             for sa in range(0, cfa_ma.get_number_of_subarrays(varnum)):
                 sa_filename = cfa_ma.write_subarray(varnum, sa, format = format)
+'''

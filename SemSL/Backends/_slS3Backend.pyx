@@ -72,3 +72,24 @@ class slS3Backend(slBackend):
             return True
         except:
             return False
+
+
+    def get_head_object(self,conn,bucket,fid):
+        """
+        Returns the head object for a file
+        :return:
+        """
+        return conn.head_object(Bucket=bucket,Key=fid)
+
+
+    def get_partial(self,conn,bucket,fid,start,stop):
+        """
+        Returns a partial file defined by bytes
+        :param start: start byte
+        :param stop: stop byte
+        :return:
+        """
+        s3_object  = conn.get_object(Bucket=bucket,Key=fid, Range='bytes={}-{}'.format(start,stop))
+        body = s3_object['Body']
+        return body.read().decode('utf8','replace').strip()
+

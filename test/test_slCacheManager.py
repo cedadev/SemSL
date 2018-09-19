@@ -17,9 +17,9 @@ class TestCacheDB(unittest.TestCase):
     def setUp(self):
         self.sl_cache = slCacheManager()
         # add example file to db
-        self.FID_IN_CACHE = 's3store/{}'.format(FID_IN_CACHE)
-        self.FID_NOT_IN_CACHE = 's3store/{}'.format(FID_NOT_IN_CACHE)
-        self.EXTRA_FID_NOT_IN_CACHE = 's3store/{}'.format(EXTRA_FID_NOT_IN_CACHE)
+        self.FID_IN_CACHE = 's3://minio/testbucket/{}'.format(FID_IN_CACHE)
+        self.FID_NOT_IN_CACHE = 's3://minio/testbucket/{}'.format(FID_NOT_IN_CACHE)
+        self.EXTRA_FID_NOT_IN_CACHE = 's3://minio/testbucket/{}'.format(EXTRA_FID_NOT_IN_CACHE)
         self.sl_cache.DB.add_entry(self.FID_IN_CACHE,size=60*10**6)
         self.sl_config = slConfig()
 
@@ -84,11 +84,13 @@ class TestCacheDB(unittest.TestCase):
         self.sl_cache.DB.add_entry(self.EXTRA_FID_NOT_IN_CACHE)
         all_fids = self.sl_cache.DB.get_all_fids()
         all_fids = list(all_fids)
-        self.assertEqual(collections.Counter(all_fids),collections.Counter(['s3store/testextranotincache', 's3store/testincache', 's3store/testnotincache']))
+        self.assertEqual(collections.Counter(all_fids),
+                         collections.Counter(['s3://minio/testbucket/testextranotincache',
+                                              's3://minio/testbucket/testincache',
+                                              's3://minio/testbucket/testnotincache']))
 
     def test_get_fid(self):
         self.assertEqual(self.sl_cache.DB.get_fid(self.FID_IN_CACHE),self.FID_IN_CACHE)
-
 
 class TestCacheManager(unittest.TestCase):
     # Test ability to take a file which isn't currently in the cache and put it in there then return the file path
@@ -154,7 +156,8 @@ class TestCacheManager(unittest.TestCase):
     def test_write_to_cache(self):
         self.assertEqual(self.sl_cache.DB.get_total_cache_size(), 60 * 10 ** 6)
         self.sl_cache._write_to_cache(self.FID_NOT_IN_CACHE, test=True, file_size=30 * 10 ** 6)
-        f = open('{}/{}'.format(self.cache_loc, self.FID_NOT_IN_CACHE.split('/')[-1]))
+        fid = '{}/{}'.format(self.cache_loc, self.FID_NOT_IN_CACHE.split('/')[-1])
+        f = open(fid,'w')
         f.close()
         self.assertEqual(self.sl_cache.DB.get_total_cache_size(), 90 * 10 ** 6)
         self.sl_cache._write_to_cache(self.EXTRA_FID_NOT_IN_CACHE,test=True, file_size=30*10**6)
@@ -163,42 +166,47 @@ class TestCacheManager(unittest.TestCase):
         self.assertEqual(self.sl_cache.DB.get_total_cache_size(), 120 * 10 ** 6)
 
     def test_get_fid_in_cache(self):
-        cache_loc = self.sl_cache.open(self.FID_IN_CACHE)
+        cache_loc = self.sl_cache.open(self.FID_IN_CACHE,'r',test=True)
         with open(cache_loc,'r') as f:
             self.assertEqual(f.read(),'testwrite')
 
     def test_get_fid_not_in_cache(self):
-        cache_loc = self.sl_cache.open(self.FID_NOT_IN_CACHE,test=True)
+        cache_loc = self.sl_cache.open(self.FID_NOT_IN_CACHE,'r',test=True)
         with open(cache_loc, 'r') as f:
             self.assertEqual(f.read(), 'testwrite')
 
     def test_fid_from_cache_a(self):
         # open new file as append
         self.sl_cache.open(self.FID_IN_CACHE,access_type='a')
-        self.sl_cache.close(self.FID_IN_CACHE)
+        self.sl_cache.close(self.FID_IN_CACHE,'a')
 
     def test_fid_from_cache_r(self):
         # open new file as append
         self.sl_cache.open(self.FID_IN_CACHE,access_type='r')
-        self.sl_cache.close(self.FID_IN_CACHE)
+        self.sl_cache.close(self.FID_IN_CACHE,'r')
 
     def test_fid_from_cache_w(self):
         # open new file as append
         self.sl_cache.open(self.FID_IN_CACHE,access_type='w')
-        self.sl_cache.close(self.FID_IN_CACHE)
+        self.sl_cache.close(self.FID_IN_CACHE,'w')
 
-    def test_put_fid_not_from_cache(self):
-        fid = 's3://minio/newtestbucket/filehead/filesub.nc'
-        nc = self.sl_cache.open(fid,access_type='w',test=True)
-        self.sl_cache.close(fid,test=True)
-        nc = self.sl_cache.open(fid, access_type='r', test=True)
-        self.sl_cache.close(fid, test=True)
-        conn_man = slConnectionManager(self.sl_config)
-        conn = conn_man.open("s3://minio")
-        s3 = conn.get()
-        s3.delete_object(Bucket='newtestbucket',
-                         Key='filehead/filesub.nc')
-        s3.delete_bucket(Bucket='newtestbucket')
+    # I've removed this test for now because I don't think it is sensible:  the cache open won't create a file, so
+    # what am I checking for??
+    # def test_put_fid_not_from_cache(self):
+    #     fid = 's3://minio/newtestbucket/filehead/filesub.nc'
+    #     nc = self.sl_cache.open(fid,access_type='w',test=True)
+    #     try:
+    #         self.sl_cache.close(fid, 'w', test=True)
+    #     except FileNotFoundError:
+    #         pass
+    #     nc = self.sl_cache.open(fid, access_type='r', test=True)
+    #     self.sl_cache.close(fid, 'w', test=True)
+    #     conn_man = slConnectionManager(self.sl_config)
+    #     conn = conn_man.open("s3://minio")
+    #     s3 = conn.get()
+    #     s3.delete_object(Bucket='newtestbucket',
+    #                      Key='filehead/filesub.nc')
+    #     s3.delete_bucket(Bucket='newtestbucket')
 
 
     def test_read_fail(self):
@@ -229,9 +237,9 @@ class TestCacheManager(unittest.TestCase):
         self.assertFalse(opened_file)
 
     def test_clear_cache(self):
-        cache_loc1 = self.sl_cache.open(self.FID_IN_CACHE,test=True)
-        cache_loc2 = self.sl_cache.open(self.FID_NOT_IN_CACHE,test=True)
-        cache_loc3 = self.sl_cache.open(self.EXTRA_FID_NOT_IN_CACHE,test=True)
+        cache_loc1 = self.sl_cache.open(self.FID_IN_CACHE,'r',test=True)
+        cache_loc2 = self.sl_cache.open(self.FID_NOT_IN_CACHE,'w',test=True)
+        cache_loc3 = self.sl_cache.open(self.EXTRA_FID_NOT_IN_CACHE,'w',test=True)
         self.assertTrue(cache_loc1)
         self.assertTrue(cache_loc2)
         self.assertTrue(cache_loc3)

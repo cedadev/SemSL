@@ -9,7 +9,6 @@ is sent to the backend. Once the cache is full, the least recently accessed file
 import os
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
-from SemSL import Backends
 import SemSL._slUtils as slU
 
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
@@ -68,20 +67,6 @@ class slCacheManager(object):
             rem_id = self.DB.get_least_recent()
             self.DB.remove_entry(rem_id)
             self._remove_file(rem_id)
-    def _get_backend(self,fid):
-        """ Get the backend object inorder to interact with the backend
-
-        :param fid:
-        :return:
-        """
-
-        host_name = slU._get_hostname(fid)
-
-        host_config = self.sl_config["hosts"][host_name]
-        backend_name = host_config['backend']
-        backend = Backends.get_backend_from_id(backend_name)
-
-        return backend()
 
     def _write_to_cache(self,fid,test=False,file_size=None):
         if not self.DB.check_cache(fid):
@@ -91,11 +76,8 @@ class slCacheManager(object):
             alias = slU._get_alias(fid)
             fname = self._get_fname(fid)
             # get the correct backend for the file
-            backend = self._get_backend(fid)
+            backend = slU._get_backend(fid)
 
-            # get file from backend
-            if not test:
-                print 'WARNING: backend not implemented, using dummy file'
 
             # Need to get the size of the file
             if test:
@@ -103,7 +85,7 @@ class slCacheManager(object):
                     file_size = 90*10**6
             else:
                 # need to calculate or query the files size
-                backend.get_object_size(client,bucket,fname)
+                file_size = backend.get_object_size(client,bucket,fname)
             # remove oldest cached files if need be
             self._remove_oldest(file_size)
 
@@ -138,7 +120,7 @@ class slCacheManager(object):
         bucket = slU._get_bucket(fid)
 
         # get backend object
-        backend = self._get_backend(fid)
+        backend = slU._get_backend(fid)
 
         # create list of buckets to check through
         buckets_dict = backend.list_buckets(client)
@@ -207,14 +189,15 @@ class slCacheManager(object):
             else:
                 if test:
                     self._write_to_cache(fid,test=True,file_size=file_size)
+                    self.DB.add_entry(fid)
                 else:
-                    # get connection
-                    # call get on backend
+                    # retrieve file from backend
                     if not diskless:
                         # write file to cache
                         # a 'download' avoids reading too much into memory and crashing as opposed to a 'read'
                         #file_size= GET FILESIZE
                         self._write_to_cache(fid,file_size=file_size)
+                        self.DB.add_entry(fid)
                         #self._write_to_cache(fid,file_size=file_size)
                     else: # diskless
                         # 'get' file, don't write to cache
@@ -225,11 +208,6 @@ class slCacheManager(object):
         elif access_type == 'w':
             # create a cache entry
             self.DB.add_entry(fid)
-            # use backend to create file?
-            # for dev purposes
-            # with open(self.DB.get_cache_loc(fid),'w') as f:
-            #     f.write('test')
-            # create file with frontend... TODO
 
             return self.DB.get_cache_loc(fid)
 
@@ -237,7 +215,7 @@ class slCacheManager(object):
             raise ValueError('Invalid access type')
 
 
-    def close(self,fid,mode,subfiles_accessed,test=False):
+    def close(self,fid,mode,subfiles_accessed=[],test=False):
         """ Uploads the file from cache, or directly to the backend, if not in cache, will save to cache
         :param test:
         :return: 0 on success
@@ -254,14 +232,12 @@ class slCacheManager(object):
             #    # do something
             #else:
             # do something else
-            print (fid)
-            print (fid)
             if self._check_whether_posix(fid,mode) == 'Alias exists':
                 self._upload_from_cache(fid)
                 # upload subfiles
                 for sf in subfiles_accessed:
-                    subfid = slU._get_alias(fid)+'/'+slU._get_bucket(fid)+'/'+sf
-                    self.DB.add_entry(subfid)
+                    subfid = sf#slU._get_alias(fid)+'/'+slU._get_bucket(fid)+'/'+sf
+                    #self.DB.add_entry(subfid) removed because not needed?? TODO affirm
                     self._upload_from_cache(subfid)
 
             pass
@@ -269,15 +245,16 @@ class slCacheManager(object):
             raise ValueError('Access mode not supported')
 
     def _remove_file(self,fid,silent=False):
+        key = slU._get_key(fid)
         try:
             if self.DB.cache_loc[-1] != '/':
-                path = '{}/{}'.format(self.DB.cache_loc, fid.split('/')[-1])
+                path = '{}/{}'.format(self.DB.cache_loc, key)
             else:
-                path = '{}{}'.format(self.DB.cache_loc, fid.split('/')[-1])
+                path = '{}{}'.format(self.DB.cache_loc, key)
             os.remove(path.encode())
         except OSError as e:
             if not silent:
-                print('OSError for file not existing? : {}'.format(fid))
+                print('OSError for file not existing? : {}'.format(key))
 
 
     def _clear_cache(self):

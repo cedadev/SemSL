@@ -1,5 +1,6 @@
 
 from SemSL._slConfigManager import slConfig
+from SemSL import Backends
 
 sl_config = slConfig()
 
@@ -42,6 +43,42 @@ def _get_bucket(fid):
     """
     fname = fid[:]
     alias = _get_alias(fid)
-    bucket = fname.replace(alias,'')
-    assert bucket.split('/')[0] == ''
+    try:
+        bucket = fname.replace(alias,'')
+    except TypeError:
+        bucket = fname[:]
+    #assert bucket.split('/')[0] == ''
     return bucket.split('/')[1]
+
+def _get_key(fid):
+    """
+    Returns the key from the file id.
+    :param fid:
+    :return:
+    """
+    alias = _get_alias(fid)
+    if not alias == None: # if no alias, just return the file name
+        bucket = _get_bucket(fid)
+        key = fid[:]
+        key = key.replace(alias,'')
+        key = key.replace(bucket,'')
+        while key[0] == '/':
+            key = key[1:]
+        return key
+    else:
+        return fid
+
+def _get_backend(fid):
+    """ Get the correct backend object inorder to interact with the backend
+
+    :param fid:
+    :return:
+    """
+
+    host_name = _get_hostname(fid)
+
+    host_config = sl_config["hosts"][host_name]
+    backend_name = host_config['backend']
+    backend = Backends.get_backend_from_id(backend_name)
+
+    return backend()

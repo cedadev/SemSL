@@ -390,6 +390,7 @@ class slCacheDB_lmdb(slCacheDB):
 
     def add_entry(self,fid,size=0):
         # need to convert to bytes string
+        print('FID IN CACHE ADD: {}'.format(fid))
         now = datetime.datetime.now()
         sDate = now.strftime('%Y-%m-%d %H:%M:%S.%f')
         with self.env.begin(write=True) as txn:
@@ -407,6 +408,8 @@ class slCacheDB_lmdb(slCacheDB):
             alias = slU._get_alias(fid)
             fpath =  fid.replace(bucket,'')
             fpath = fpath.replace(alias,'')
+            while fpath[0] == '/':
+                fpath = fpath[1:]
             if self.cache_loc[-1] != '/':
                 cache_loc = '{}/{}'.format(self.cache_loc, fpath)
             else:
@@ -541,7 +544,10 @@ class slCacheDB_lmdb(slCacheDB):
         with self.env.begin() as txn:
             cursor = txn.cursor()
             for key,value in cursor:
-                file_list.append(key.decode().split('_')[0])
+                removestr = key.decode().split('.nc')[-1]
+                fid_key = key.decode().replace(removestr,'')
+                if not fid_key in file_list:
+                    file_list.append(fid_key)
         return list(set(file_list))
 
     def close_db(self):

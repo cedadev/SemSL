@@ -4,7 +4,7 @@
    This "base" interface implements a simple serial way of reading, writing and uploading.
 """
 
-from ._s3netCDFIO import get_netCDF_file_details, put_netCDF_file
+#from ._s3netCDFIO import get_netCDF_file_details, put_netCDF_file
 import netCDF4._netCDF4 as netCDF4
 import os
 from ._CFAFunctions import get_source_target_slices
@@ -66,6 +66,7 @@ class _baseInterface(object):
         # get the filename, either in the cache for s3 files or on disk for POSIX
         #file_details = get_netCDF_file_details(part.subarray.file, 'w')
         slC = slCache()
+        print('TEST PRINT: SUBARRAY NAME {}'.format(part.subarray.file))
         try:
             file_details = slC.open(part.subarray.file, access_type='w')
         except ValueError:

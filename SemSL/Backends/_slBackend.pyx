@@ -29,3 +29,9 @@ class slBackend(object):
 
     def get_object_size(self):
         raise NotImplementedError
+
+    def get_head(self,fid):
+        raise NotImplementedError
+
+    def get_patial(self,fid,start,stop):
+        raise NotImplementedError
