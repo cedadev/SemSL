@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-''' This file tests the s3netcdf4 library.
+''' This file tests the SemSL netcdf4 frontend.
 '''
 
 import unittest
