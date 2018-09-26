@@ -244,7 +244,7 @@ class slCacheManager(object):
         else:
             raise ValueError('Access mode not supported')
 
-    def _remove_file(self,fid,silent=False):
+    def _remove_file(self,fid,silent=True):
         key = slU._get_key(fid)
         try:
             if self.DB.cache_loc[-1] != '/':

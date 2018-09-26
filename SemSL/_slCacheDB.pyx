@@ -390,7 +390,7 @@ class slCacheDB_lmdb(slCacheDB):
 
     def add_entry(self,fid,size=0):
         # need to convert to bytes string
-        print('FID IN CACHE ADD: {}'.format(fid))
+        #print('FID IN CACHE ADD: {}'.format(fid))
         now = datetime.datetime.now()
         sDate = now.strftime('%Y-%m-%d %H:%M:%S.%f')
         with self.env.begin(write=True) as txn:

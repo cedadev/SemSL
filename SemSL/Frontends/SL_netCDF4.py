@@ -135,6 +135,8 @@ class s3Dataset(object):
                 self._file_details.cfa_file = CFAFile()
                 self._file_details.cfa_file.format = self._file_details.format
             else:
+
+                self._file_details.format = format
                 self._file_details.cfa_file = None
 
             # # for writing a file, all we have to do is check that the containing folder in the cache exists
@@ -156,7 +158,7 @@ class s3Dataset(object):
         else:
             # no other modes are supported
             raise s3APIException("Mode " + mode + " not supported.")
-
+        self.groups = self.ncD.groups
 
     def __enter__(self):
         """Allows objects to be used with a `with` statement."""
@@ -189,10 +191,11 @@ class s3Dataset(object):
 
     def createDimension(self, dimname, size=None):
         """Overloaded version of createDimension that records the dimension info into a CFADim instance"""
-        netCDF4.Dataset.createDimension(self.ncD, dimname, size)
+        ncd = netCDF4.Dataset.createDimension(self.ncD, dimname, size)
         if self._file_details.cfa_file is not None:
             # add to the dimensions
             self._file_details.cfa_file.cfa_dims[dimname] = CFADim(dim_name=dimname, dim_len=size)
+        return ncd
 
 
     def createVariable(self, varname, datatype, dimensions=(), zlib=False,
@@ -242,7 +245,7 @@ class s3Dataset(object):
 
                 # create the partitions, i.e. a list of CFAPartition, and get the partition shape
                 # get the max file size from the s3ClientConfig
-                print('BASE FILENAME: {}'.format(base_filename))
+                #print('BASE FILENAME: {}'.format(base_filename))
                 pmshape, partitions = create_partitions(base_filename, self, dimensions,
                                                         varname, var_shape, var.dtype,
                                                         max_file_size=100000,
@@ -298,6 +301,8 @@ class s3Dataset(object):
         """Close the netCDF file.  If it is a S3 file and the mode is write then upload to the storage."""
         # for each variable, get the accessed subfiles
 
+        # TODO do we want to check if has been sync'd before re uploading everything?? could use attr flag
+
         sl_config = slConfig()
 
         for v in self._cfa_variables.values():
@@ -305,7 +310,7 @@ class s3Dataset(object):
         # flatten the list
         subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
         try:
-            subfiles = subfiles[0]
+            subfiles = subfiles[0] # Need to do this because previous command create a list with a single list in
         except IndexError:
             pass
 
@@ -318,11 +323,12 @@ class s3Dataset(object):
         if (self._file_details.filemode == 'w' or
                 self._file_details.filemode == "r+" or
                 self._file_details.filemode == 'a'):
-            try:
-                conv_attrs = self.getncattr("Conventions")
-                self.setncattr("Conventions", conv_attrs + " CFA-0.4")
-            except:
-                self.setncattr("Conventions", "CFA-0.4")
+            if self._file_details.cfa_file is not None:
+                try:
+                    conv_attrs = self.getncattr("Conventions")
+                    self.setncattr("Conventions", conv_attrs + " CFA-0.4")
+                except:
+                    self.setncattr("Conventions", "CFA-0.4")
         netCDF4.Dataset.close(self.ncD)
         slC = slCache()
         if self._file_details.s3_uri == '':
@@ -337,7 +343,37 @@ class s3Dataset(object):
         """ Overloads the netcdf4 method which syncs to disk.
             Syncs the open dataset to disk and backend as required.
         """
-        raise NotImplementedError
+        sl_config = slConfig()
+
+        for v in self._cfa_variables.values():
+            self.subfiles_accessed.append(v._accessed_subfiles())
+        # flatten the list
+        subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
+        try:
+            subfiles = subfiles[0] # Need to do this because previous command create a list with a single list in
+        except IndexError:
+            pass
+
+        # construct backend path for each subfile
+        if not self._file_details.s3_uri == '':
+            cache_path = sl_config['cache']['location']
+            subfiles = [sf.replace(cache_path, '') for sf in subfiles]
+
+        if (self._file_details.filemode == 'w' or
+                self._file_details.filemode == "r+" or
+                self._file_details.filemode == 'a'):
+            if self._file_details.cfa_file is not None:
+                try:
+                    conv_attrs = self.getncattr("Conventions")
+                    self.setncattr("Conventions", conv_attrs + " CFA-0.4")
+                except:
+                    self.setncattr("Conventions", "CFA-0.4")
+
+        slC = slCache()
+        if self._file_details.s3_uri == '':
+            slC.close(self._file_details.filename, self.mode, self.subfiles_accessed)
+        else:
+            slC.close(self._file_details.s3_uri, self.mode, subfiles)
 
     @property
     def cmptypes(self):
@@ -356,11 +392,15 @@ class s3Dataset(object):
         return self.ncD.createVLType(datatype,datatype_name)
 
     @property
+    def VLTypes(self):
+        return self.ncD.vltypes
+
+    @property
     def data_model(self):
         return self.ncD.data_model
 
-    def delncattr(self,name,value):
-        return self.ncD.delncattr(name,value)
+    def delncattr(self,name):
+        return self.ncD.delncattr(name)
 
     @property
     def dimensions(self):
@@ -408,8 +448,8 @@ class s3Dataset(object):
         return self.ncD.renameGroup(oldname,newname)
 
     def renameVariable(self,oldname,newname):
-        raise NotImplementedError('This has been disabled due to clashing with the subfile naming conventions.')
-        #return self.ncD.renameVariable(oldname,newname)
+        #raise NotImplementedError('This has been disabled due to clashing with the subfile naming conventions.')
+        return self.ncD.renameVariable(oldname,newname)
 
     def set_auto_chartostring(self,True_or_False):
         return self.ncD.set_auto_chartostring(True_or_False)

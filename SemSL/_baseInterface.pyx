@@ -66,7 +66,7 @@ class _baseInterface(object):
         # get the filename, either in the cache for s3 files or on disk for POSIX
         #file_details = get_netCDF_file_details(part.subarray.file, 'w')
         slC = slCache()
-        print('TEST PRINT: SUBARRAY NAME {}'.format(part.subarray.file))
+        #print('TEST PRINT: SUBARRAY NAME {}'.format(part.subarray.file))
         try:
             file_details = slC.open(part.subarray.file, access_type='w')
         except ValueError:
