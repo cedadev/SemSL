@@ -18,6 +18,9 @@ class slBackend(object):
     def download(self):
         raise NotImplementedError
 
+    def remove(self):
+        raise NotImplementedError
+
     def upload(self):
         raise NotImplementedError
 

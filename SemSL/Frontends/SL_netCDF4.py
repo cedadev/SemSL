@@ -27,7 +27,7 @@ from collections import OrderedDict, deque
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
 _s3_private_atts = [
  # member variables
- '_file_details', '_cfa_variables', '_s3_client_config', 'filename'
+ '_file_details', '_cfa_variables', '_s3_client_config', 'filename', 'slC'
 ]
 netCDF4._private_atts.extend(_s3_private_atts)
 
@@ -53,9 +53,11 @@ class s3Dataset(object):
 
 
         # get the file details
+        self.slC = slCache()
         self.filename = filename
         self._file_details = get_netCDF_file_details(filename, mode, diskless, persist)
         self._cfa_variables = OrderedDict()
+        self._variables_overwritten_by_cfa = OrderedDict()
 
         # get the s3ClientConfig for paths to the cache and max file size
         self._s3_client_config = slConfig()
@@ -93,12 +95,14 @@ class s3Dataset(object):
             # check if file is a CFA file, for standard netCDF files
             try:
                 cfa = "CFA" in self.getncattr("Conventions")
+                self._file_details.cfa_file = 'CFA'
             except:
                 cfa = False
 
 
             if cfa:
                 # Get the host name in order to get the specific settings
+                #print('CFA FILE')
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._s3_client_config['hosts'][host_name]['object_size']
@@ -117,6 +121,20 @@ class s3Dataset(object):
                                                             {'cache_location' : self._s3_client_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
                                                              'read_threads' : 1})
+                        #print(self.variables[v]._varid)
+
+
+                        #self._cfa_variables[v].setncattr('_varid', self.variables[v]._varid)
+                        self._variables_overwritten_by_cfa[v] = self.variables[v]
+                        # TODO try to fix the rename while retaining the overwrite of variables with cfa variables
+                        # first try to diagnose why _nc_var isn't passing properly to the cfa variable
+                        # create new getter and setter??
+                        self.variables[v] = self._cfa_variables[v]
+                        #print(self.variables[v]._varid)
+                        #if mode == 'a':
+                        #    print(self.variables[v]._nc_var)
+                        #    #self.variables[v]._nc_var['_varid'] = self._variables_overwritten_by_cfa[v]._varid
+
             else:
                 self._file_details.cfa_file = None
 
@@ -130,14 +148,19 @@ class s3Dataset(object):
                 self._file_details.format = 'NETCDF4'
                 self._file_details.cfa_file = CFAFile()
                 self._file_details.cfa_file.format = self._file_details.format
+                cfa = 'CFA4'
+                self._file_details.cfa_file = 'CFA4'
             elif format == 'CFA3':
                 self._file_details.format = 'NETCDF3_CLASSIC'
                 self._file_details.cfa_file = CFAFile()
                 self._file_details.cfa_file.format = self._file_details.format
+                cfa = 'CFA3'
+                self._file_details.cfa_file = 'CFA3'
             else:
 
                 self._file_details.format = format
                 self._file_details.cfa_file = None
+                cfa = None
 
             # # for writing a file, all we have to do is check that the containing folder in the cache exists
             # if self._file_details.filename != "":   # first check that it is not a diskless file
@@ -154,6 +177,30 @@ class s3Dataset(object):
                                      format=self._file_details.format, diskless=diskless, persist=persist,
                                      keepweakref=keepweakref, memory=None, **kwargs)
             self.variables = self.ncD.variables
+
+            if cfa:
+                #print('CFA FILE')
+                # Get the host name in order to get the specific settings
+                try:
+                    host_name = slU._get_hostname(self._file_details.filename)
+                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                except ValueError:
+                    obj_size = 0
+                # Parse the CFA metadata from this class' metadata
+                self._file_details.cfa_file = CFAFile()
+                self._file_details.cfa_file.format = self._file_details.format
+                # recreate the variables as s3Variables and attach the cfa data
+                for v in self.variables:
+                    if v in self._file_details.cfa_file.cfa_vars:
+                        self._cfa_variables[v] = s3Variable(self.variables[v],
+                                                            self._file_details.cfa_file,
+                                                            self._file_details.cfa_file.cfa_vars[v],
+                                                            {'cache_location' : self._s3_client_config['cache']['location'],
+                                                             'max_object_size_for_memory' : obj_size,
+                                                             'read_threads' : 1})
+                        self.variables[v] = self._cfa_variables[v]
+            else:
+                self._file_details.cfa_file = None
 
         else:
             # no other modes are supported
@@ -180,14 +227,15 @@ class s3Dataset(object):
         else:
             return self.variables[name]
 
-    def getVariables(self):
-        """Get a list of the variable names"""
-        names = []
-        for n in self._cfa_variables:
-            names.append(n)
-        for n in self.variables:
-            names.append(n)
-        return names
+    # removed because added the f.variables in properly
+    # def getVariables(self):
+    #     """Get a list of the variable names"""
+    #     names = []
+    #     #for n in self._cfa_variables:
+    #     #    names.append(n)
+    #     for n in self.variables:
+    #         names.append(n)
+    #     return names
 
     def createDimension(self, dimname, size=None):
         """Overloaded version of createDimension that records the dimension info into a CFADim instance"""
@@ -208,7 +256,7 @@ class s3Dataset(object):
            required CFA metadata."""
 
         slC = slCache()
-
+        #print('IN CREATE VAR {}'.format(self._file_details.cfa_file))
         if self._file_details.cfa_file is None:
             var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, dimensions, zlib,
                     complevel, shuffle, fletcher32, contiguous,
@@ -441,15 +489,138 @@ class s3Dataset(object):
     def renameAttribute(self,oldname,newname):
         return self.ncD.renameAttribute(oldname,newname)
 
+    def close_subfiles(self,file_list):
+        for file in file_list:
+            file.close()
+
+    def upload_subfiles(self,file_list):
+        # upload sub files in bulk, won't do anything if posix files are passed to it
+        self.slC.bulk_upload(file_list)
+
+    def return_subvars(self,varname=False,newname=False):
+        # returns a list of the sub varible objects to update, and the posix files and cache files
+        # to enable closing
+
+        # if files not in cache then need to download in bulk from backend BEFORE updating files
+        # for all subfiles, check the cache, and create list of all ones not in there
+        # the size of the total files also needs to be caculated to make sure it is not larger than the
+        # max cache size
+        # get the list of subfiles from the master file
+
+        # if the variable name is not supplied, get all the variables in the dataset
+        if not varname:
+            vars = self._cfa_variables
+        else:
+            vars = [varname]
+        svs = []
+        sfs = []
+        files_for_download = []
+        cache_locs = []
+        posix_files = []
+        all_open_files = []
+
+        for var in vars:
+            if not newname:
+                varobj = self.variables[var]
+            else:
+                 varobj = self.variables[newname]
+            varpartionsdict = varobj.getncattr('cfa_array')
+            subfiles = []
+            attr_split = [el.split('"') for el in varpartionsdict.split('file')]
+            for slist in attr_split:
+                [subfiles.append(i) for i in slist if ".nc" in i]
+
+            for file in subfiles:
+                if self.slC._check_whether_posix(file, 'a') == 'Alias exists':
+                    # Build download list
+                    if not self.slC.DB.check_cache(file):
+                        files_for_download.append(file)
+                    # create list of the paths for each file in the cache
+                    cache_loc = self.slC.DB.get_cache_loc(file)
+                    cache_locs.append(cache_loc)
+                    all_open_files.append(cache_loc)
+                # if it is a posix file might as well append
+                elif self.slC._check_whether_posix(file, 'a'):
+                    posix_files.append(file)
+                    all_open_files.append(file)
+                elif not self.slC._check_whether_posix:
+                    raise ValueError("Alias doesn't exist, and the lib doesn't "
+                                     "think the files path is POSIX for {}".format(file))
+
+            if len(files_for_download)>0:
+                self.slC.bulk_download(files_for_download)
+
+            # add any posix files
+            for file in posix_files:
+                sf = netCDF4.Dataset(file,'a')
+                sfs.append(sf)
+                svs.append(sf.variables[var])
+
+            # now add the downloaded vars
+            for file in cache_locs:
+                # need to open each subfile
+                sf = netCDF4.Dataset(file,'a')
+                sfs.append(sf)
+                svs.append(sf.variables[var])
+
+        return svs, sfs, all_open_files, subfiles
+
     def renameDimension(self,oldname,newname):
-        return self.ncD.renameDimension(oldname,newname)
+        self.ncD.renameDimension(oldname,newname)
+        self.ncD.renameVariable(oldname,newname)
+
+        if self._file_details.cfa_file is not None:
+            svs, sfs, open_files, subfiles = self.return_subvars()
+            # loop through variables
+            for sf in sfs:
+                sf.renameDimension(oldname, newname)
+                sf.renameVariable(oldname, newname)
+
+            self.close_subfiles(sfs)
+            self.upload_subfiles(subfiles)
 
     def renameGroup(self,oldname,newname):
-        return self.ncD.renameGroup(oldname,newname)
+        self.ncD.renameGroup(oldname,newname)
+
+        if self._file_details.cfa_file is not None:
+            svs, sfs, open_files, subfiles = self.return_subvars()
+            # loop through variables
+            for sf in sfs:
+                sf.renameGroup(oldname,newname)
+            self.close_subfiles(sfs)
+            self.upload_subfiles(subfiles)
+
+    def rename_cfa_files(self, open_files, oldname, newname):
+        # rename the cfa subfiles
+        for file in open_files:
+            new_path_name = file.replace(oldname,newname)
+            os.rename(file, new_path_name)
 
     def renameVariable(self,oldname,newname):
-        #raise NotImplementedError('This has been disabled due to clashing with the subfile naming conventions.')
-        return self.ncD.renameVariable(oldname,newname)
+        # rename the required variable
+        self.ncD.renameVariable(oldname,newname) # this doesn't work for cfa variables
+
+        if self._file_details.cfa_file is not None:
+
+            svs, sfs, open_files, subfiles = self.return_subvars(varname=oldname,newname=newname)
+            # loop through variables
+            for sf in sfs:
+                sf.renameVariable(oldname,newname)
+            self.close_subfiles(sfs)
+
+            # Need to rename the files in cache or if posix files
+            # new files is a list of the changed subfiles for posix and and backend path
+            # openfiles is the list of posix and files in cache ie 'real' files
+            self.rename_cfa_files(open_files, oldname, newname)
+
+            # rename the cfa files
+            new_cfa_files = [x.replace(oldname,newname) for x in subfiles]
+
+            # Need to remove the old named files from the backend
+            self.slC.remove_from_backend(subfiles)
+
+            # Now upload the new files
+            self.slC.bulk_upload(new_cfa_files)
 
     def set_auto_chartostring(self,True_or_False):
         return self.ncD.set_auto_chartostring(True_or_False)
@@ -487,20 +658,19 @@ class s3Variable(object):
       Reimplement the UniData netCDF4 Variable class and override some key methods so as to enable CFA and S3 functionality
     """
 
-    _private_atts = ["_cfa_var", "_nc_var", "_cfa_file", "_init_params","subfiles_accessed"]
+    _private_atts = ["_cfa_var", "_nc_var", "_cfa_file", "_init_params","subfiles_accessed",
+                     "slC","_varid", "chartostring"]
 
     def __init__(self, nc_var, cfa_file, cfa_var, init_params = {}):
         """Keep a reference to the nc_file, nc_var and cfa_var"""
-        self._init_params = init_params
         self._nc_var  = nc_var
-        self._cfa_var = cfa_var
         self._cfa_file = cfa_file
+        self._init_params = init_params
+        self._cfa_var = cfa_var
         self.subfiles_accessed = []
-
-    """There now follows a long list of functions, matching the netCDF4.Variable interface.
-       The only functions we need to override are __getitem__ and __setitem__, so as to
-       use the CFA information in cfa_var.
-       The other methods we need to pass through to the _nc_var member variable."""
+        self.slC = slCache()
+        self._varid = nc_var._varid
+        self.chartostring = nc_var.chartostring
 
     def _accessed_subfiles(self):
         return self.subfiles_accessed
@@ -513,6 +683,84 @@ class s3Variable(object):
 
     def __unicode__(self):
         return self._nc_var.__unicode__()
+
+    def close_subfiles(self,file_list):
+        for file in file_list:
+            file.close()
+
+    def upload_subfiles(self,file_list):
+        # upload sub files in bulk, won't do anything if posix files are passed to it
+        # TODO instead shouldn't I just add to the changed subfiles list??
+        self.slC.bulk_upload(file_list)
+
+    def check_whether_posix(self,file):
+        # for the sub var return check the slcache function doesn't work, because can't supply a read
+        # mode. We need another way to check
+        # Assume for now that if there is not a matching alias, that the file points to a POSIX path
+        # TODO update this with proper check
+        if slU._get_alias(file) is not None:
+            return 'Alias exists'
+        else:
+            return True
+
+    def return_subvars(self, var):
+        # returns a list of the sub varible objects to update, and the posix files and cache files
+        # to enable closing
+
+        # if files not in cache then need to download in bulk from backend BEFORE updating files
+        # for all subfiles, check the cache, and create list of all ones not in there
+        # the size of the total files also needs to be caculated to make sure it is not larger than the
+        # max cache size
+        # get the list of subfiles from the master file
+        varpartionsdict = self.getncattr('cfa_array')
+        subfiles = []
+        attr_split = [el.split('"') for el in varpartionsdict.split('file')]
+        for slist in attr_split:
+            [subfiles.append(i) for i in slist if ".nc" in i]
+        svs = []
+        sfs = []
+        files_for_download = []
+        cache_locs = []
+        posix_files = []
+        all_open_files = []
+        for file in subfiles:
+            if self.check_whether_posix(file) == 'Alias exists':
+                # Build download list
+                if not self.slC.DB.check_cache(file):
+                    files_for_download.append(file)
+                # create list of the paths for each file in the cache
+                cache_loc = self.slC.DB.get_cache_loc(file)
+                cache_locs.append(cache_loc)
+                all_open_files.append(cache_loc)
+            # if it is a posix file might as well append
+            elif self.check_whether_posix(file):
+                posix_files.append(file)
+                all_open_files.append(file)
+
+            elif not self.check_whether_posix:
+                raise ValueError("Alias doesn't exist, and the lib doesn't "
+                                 "think the files path is POSIX for {}".format(file))
+
+        if len(files_for_download)>0:
+            self.slC.bulk_download(files_for_download)
+
+        # the check for posix files doesn't work if the files don't already exist, i.e on write!
+        # add any posix files
+        for file in posix_files:
+            sf = netCDF4.Dataset(file,'a')
+            sfs.append(sf)
+            svs.append(sf.variables[var])
+
+        # now add the downloaded vars
+        for file in cache_locs:
+            # need to open each subfile
+            sf = netCDF4.Dataset(file,'a')
+            sfs.append(sf)
+            svs.append(sf.variables[var])
+
+        #print('IN VAR RETURN VAR, POSIX FILES: {}'.format(posix_files))
+
+        return svs, sfs, all_open_files
 
     @property
     def name(self):
@@ -556,27 +804,63 @@ class s3Variable(object):
 
     def setncattr(self, name, value):
         # copy to the cfa_var
-        self._cfa_var.metadata[name] = value
+        #self._cfa_var.metadata[name] = value
         # copy to the netCDF var
+        #print('ENTERED VAR SETATTR')
         self._nc_var.setncattr(name, value)
+        if self._cfa_file is not None:
+            svs, sfs, open_files = self.return_subvars(self.name)
+            # loop through variables
+            for sv in svs:
+                sv.setncattr(name, value)
+                assert sv.getncattr(name) == value
+            self.close_subfiles(sfs)
+            self.upload_subfiles(open_files)
 
     def setncattr_string(self, name, value):
         # copy to the cfa_var
-        self._cfa_var.metadata[name] = value
+        #self._cfa_var.metadata[name] = value
         # copy to the netCDF var
         self._nc_var.setncattr(name, value)
+
+        if self._cfa_file is not None:
+            svs, sfs, open_files = self.return_subvars(self.name)
+            # loop through variables
+            for sv in svs:
+                sv.setncattr(name, value)
+            self.close_subfiles(sfs)
+            self.upload_subfiles(open_files)
 
     def setncatts(self, attdict):
         # copy to the cfa_var
         self._cfa_var.metadata = attdict
         # copy to the netCDF var
         self._nc_var.setncatts(attdict)
+        print('IN SET ATTR {}'.format(self._cfa_file))
+
+        if self._cfa_file is not None:
+            svs, sfs, open_files = self.return_subvars(self.name)
+            # loop through variables
+            for sv in svs:
+                sv.setncatts(attdict)
+            self.close_subfiles(sfs)
+            self.upload_subfiles(open_files)
 
     def getncattr(self, name, encoding='utf-8'):
         return self._nc_var.getncattr(name, encoding)
 
     def delncattr(self, name):
+        #print('IN VAR DELATTR {}'.format(self.ncattrs()))
         self._nc_var.delncattr(name)
+
+        if self._cfa_file is not None:
+            svs, sfs, open_files = self.return_subvars(self.name)
+            # loop through variables
+            for sv in svs:
+                #print('IN VAR DELATTR {}'.format(sv.ncattrs()))
+                sv.delncattr(name)
+            self.close_subfiles(sfs)
+            self.upload_subfiles(open_files)
 
     def filters(self):
         return self._nc_var.filters()
@@ -596,6 +880,14 @@ class s3Variable(object):
     def __delattr__(self, name):
         self._nc_var.__delattr__(name)
 
+        # if self._cfa_file is not None:
+        #     svs, sfs, open_files = self.return_subvars(self.name)
+        #     # loop through variables
+        #     for sv in svs:
+        #         sv.__delattr__(name)
+        #     self.close_subfiles(sfs)
+        #     self.upload_subfiles(open_files)
+
     def __setattr__(self, name, value):
         if name in s3Variable._private_atts:
             self.__dict__[name] = value
@@ -605,6 +897,21 @@ class s3Variable(object):
             raise AttributeError("shape cannot be altered")
         else:
             self._nc_var.__setattr__(name, value)
+
+        # if self._cfa_file is not None:
+        #     svs, sfs, open_files = self.return_subvars(self.name)
+        #     # loop through variables
+        #     for sv in svs:
+        #         if name in s3Variable._private_atts:
+        #             sv.__dict__[name] = value
+        #         elif name == "dimensions":
+        #             raise AttributeError("dimensions cannot be altered")
+        #         elif name == "shape":
+        #             raise AttributeError("shape cannot be altered")
+        #         else:
+        #             sv.__setattr__(name, value)
+        #     self.close_subfiles(sfs)
+        #     self.upload_subfiles(open_files)
 
     def __getattr__(self, name):
         # check whether it is _nc_var or _cfa_var
@@ -616,6 +923,9 @@ class s3Variable(object):
             return tuple(self._shape())
         elif name == "size":
             return self._size()
+        # create work around for returning the _varid private attr
+        elif name == '_varid':
+                return self._va
         # if name in _private_atts, it is stored at the python
         # level and not in the netCDF file.
         elif name.startswith('__') and name.endswith('__'):
@@ -629,12 +939,21 @@ class s3Variable(object):
             else:
                 raise AttributeError
         elif name in netCDF4._private_atts:
+
             return self._nc_var.__dict__[name]
         else:
             return self._nc_var.getncattr(name)
 
     def renameAttribute(self, oldname, newname):
         self._nc_var.renameAttribute(oldname, newname)
+
+        if self._cfa_file is not None:
+            svs, sfs, open_files = self.return_subvars(self.name)
+            # loop through variables
+            for sv in svs:
+                sv.renameAttribute(oldname, newname)
+            self.close_subfiles(sfs)
+            self.upload_subfiles(open_files)
 
     def __len__(self):
         return self._nc_var.__len__()
@@ -721,3 +1040,5 @@ class s3Variable(object):
         pret = write_interface.write(subset_parts, elem_slices)
 
         self.subfiles_accessed.append(pret)
+
+        # TODO move percolation of variable attributes to here?? either way can miss some...

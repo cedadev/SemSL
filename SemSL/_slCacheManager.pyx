@@ -98,7 +98,7 @@ class slCacheManager(object):
 
 
 
-            backend.download(client,bucket,fname, self.DB.cache_loc+'/'+fname)# only works with boto3 client objects
+            backend.download(client,bucket,fname, self.DB.cache_loc+'/'+fname)
 
             # update cachedb
             # set access and creation time, and filesize
@@ -147,7 +147,10 @@ class slCacheManager(object):
                 return os.path.exists(fid)
 
             elif access_type == 'w':
-                return os.path.exists(os.path.dirname(fid))
+                if not '/' in fid:
+                    return True
+                else:
+                    return os.path.exists(os.path.dirname(fid))
 
             return False # returns False if alias not in
         else:
@@ -240,9 +243,120 @@ class slCacheManager(object):
                     #self.DB.add_entry(subfid) removed because not needed?? TODO affirm
                     self._upload_from_cache(subfid)
 
-            pass
+
         else:
             raise ValueError('Access mode not supported')
+
+    def bulk_download(self,file_list):
+        # Download all the files in the list in one backend call
+
+        # Get all the aliases in the file_list then do the download for each backend
+        aliases = []
+        for file in file_list:
+
+            file_alias = slU._get_alias(file)
+            if not file_alias in aliases:
+                aliases.append(file_alias)
+
+
+        # Keep track of file size total
+        tot_size = 0
+
+        for alias in aliases:
+            # build the  list for the backend
+            files_in_backend = []
+            for file in file_list:
+                if alias in file:
+                    files_in_backend.append(file)
+
+            bucket = slU._get_bucket(file)
+            client = self._return_client(file)
+            # get the correct backend for the file
+            backend = slU._get_backend(file_list[0])
+
+            # Do bulk download
+            for file in file_list:
+
+                fname = self._get_fname(file)
+                file_size = backend.get_object_size(client,bucket,fname)
+                tot_size+=file_size
+                if tot_size > self.sl_config['cache']['cache_size']:
+                    raise ValueError("When updating subfile metadata the subfile's total size exceeded the"
+                                     "size of the cache")
+            # remove oldest cached files if need be
+                self._remove_oldest(file_size)
+
+            if '/' in fname:
+                try:
+                    os.makedirs(str.join('',fname.split('/')[:-1]))
+                except FileExistsError:
+                    pass
+            for file in files_in_backend:
+                fname = self._get_fname(file)
+                backend.download(client,bucket,fname, self.DB.cache_loc+'/'+fname)
+
+    def remove_from_backend(self,file_list):
+        # remove all these files from the backend
+        aliases = []
+        for file in file_list:
+
+            file_alias = slU._get_alias(file)
+            if not file_alias in aliases:
+                aliases.append(file_alias)
+
+
+        # Keep track of file size total
+        tot_size = 0
+
+        for alias in aliases:
+            # build the  list for the backend
+            if alias:
+                files_in_backend = []
+                for file in file_list:
+                    if alias in file:
+                        files_in_backend.append(file)
+
+                bucket = slU._get_bucket(file)
+                client = self._return_client(file)
+                # get the correct backend for the file
+                backend = slU._get_backend(file_list[0])
+
+                # Do bulk download
+                for file in file_list:
+                    fname = self._get_fname(file)
+                    backend.remove_obj(client,bucket,fname)
+
+
+    def bulk_upload(self,file_list):
+        # Download all the files in the list in one backend call
+
+        # Get all the aliases in the file_list then do the download for each backend
+        aliases = []
+        for file in file_list:
+            file_alias = slU._get_alias(file)
+            if not file_alias in aliases:
+                aliases.append(file_alias)
+
+        # Keep track of file size total
+        tot_size = 0
+
+        for alias in aliases:
+            # build the  list for the backend
+            if alias != None:
+                files_in_backend = []
+                for file in file_list:
+
+                    if alias in file:
+                        files_in_backend.append(file)
+
+                bucket = slU._get_bucket(file)
+                client = self._return_client(file)
+                # get the correct backend for the file
+                backend = slU._get_backend(file_list[0])
+
+                for file in files_in_backend:
+                    fname = self._get_fname(file)
+                    backend.upload(client,self.DB.cache_loc+'/'+fname,bucket,fname)
 
     def _remove_file(self,fid,silent=True):
         key = slU._get_key(fid)

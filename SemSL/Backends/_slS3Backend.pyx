@@ -33,13 +33,23 @@ class slS3Backend(slBackend):
     def get_id(self):
         return ("slS3Backend")
 
+    def remove_obj(self,conn,bucket,key):
+        '''
+        Deletes the required key from the backend.
+        '''
+        try:
+            conn.delete_object(Bucket=bucket, Key=key)
+        except ClientError:
+            raise ValueError('Cannot remove object from backend: File not found')
+
     def download(self,conn,bucket,key,cacheloc):
         ''' Downloads file from OS to prescribed place in cache.
         '''
         try:
-            conn.download_file(bucket,key, cacheloc)# only works with boto3 client objects
+            conn.download_file(bucket, key, cacheloc)# only works with boto3 client objects
         except ClientError:
-            raise ValueError('File not found')
+            raise ValueError('Cannot download object: File not found')
+
     def create_bucket(self,conn,bucket):
         ''' Creates bucket.
 
