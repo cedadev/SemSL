@@ -390,6 +390,7 @@ class s3Dataset(object):
     def sync(self):
         """ Overloads the netcdf4 method which syncs to disk.
             Syncs the open dataset to disk and backend as required.
+            TODO
         """
         sl_config = slConfig()
 
@@ -518,6 +519,7 @@ class s3Dataset(object):
         cache_locs = []
         posix_files = []
         all_open_files = []
+        subfiles = []
 
         for var in vars:
             if not newname:
@@ -525,7 +527,6 @@ class s3Dataset(object):
             else:
                  varobj = self.variables[newname]
             varpartionsdict = varobj.getncattr('cfa_array')
-            subfiles = []
             attr_split = [el.split('"') for el in varpartionsdict.split('file')]
             for slist in attr_split:
                 [subfiles.append(i) for i in slist if ".nc" in i]
@@ -836,7 +837,7 @@ class s3Variable(object):
         self._cfa_var.metadata = attdict
         # copy to the netCDF var
         self._nc_var.setncatts(attdict)
-        print('IN SET ATTR {}'.format(self._cfa_file))
+        #print('IN SET ATTS {}'.format(self._cfa_file))
 
         if self._cfa_file is not None:
             svs, sfs, open_files = self.return_subvars(self.name)
