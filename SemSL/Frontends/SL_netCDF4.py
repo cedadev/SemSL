@@ -357,17 +357,9 @@ class s3Dataset(object):
 
         for v in self._cfa_variables.values():
             self.subfiles_accessed.extend(v._accessed_subfiles())
-        # flatten the list
-        # subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
-        # try:
-        #     subfiles = subfiles[0] # Need to do this because previous command create a list with a single list in
-        # except IndexError:
-        #     pass
+
+        # Add subfiles to the accessed subfiles
         subfiles = self.subfiles_accessed
-        # construct backend path for each subfile
-        # if not self._file_details.s3_uri == '':
-        #     cache_path = sl_config['cache']['location']
-        #     subfiles = [sf.replace(cache_path, '') for sf in subfiles]
 
         # Update the attributes of the subfiles
         # get glob attrs from master file
@@ -433,39 +425,17 @@ class s3Dataset(object):
     def sync(self):
         """ Overloads the netcdf4 method which syncs to disk.
             Syncs the open dataset to disk and backend as required.
-            TODO
         """
-        sl_config = slConfig()
-
-        for v in self._cfa_variables.values():
-            self.subfiles_accessed.append(v._accessed_subfiles())
-        # flatten the list
-        subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
-        try:
-            subfiles = subfiles[0] # Need to do this because previous command create a list with a single list in
-        except IndexError:
-            pass
-
-        # construct backend path for each subfile
         if not self._file_details.s3_uri == '':
-            cache_path = sl_config['cache']['location']
-            subfiles = [sf.replace(cache_path, '') for sf in subfiles]
-
-        if (self._file_details.filemode == 'w' or
-                self._file_details.filemode == "r+" or
-                self._file_details.filemode == 'a'):
-            if self._file_details.cfa_file is not None:
-                try:
-                    conv_attrs = self.getncattr("Conventions")
-                    self.setncattr("Conventions", conv_attrs + " CFA-0.4")
-                except:
-                    self.setncattr("Conventions", "CFA-0.4")
-
-        slC = slCache()
-        if self._file_details.s3_uri == '':
-            slC.close(self._file_details.filename, self.mode, self.subfiles_accessed)
+            raise NotImplementedError('Sync/flush is not implemented for files in a backend. Call close() on the dataset inorder to sync.')
+        elif not self._file_details.cfa_file:
+            self.ncD.sync()
         else:
-            slC.close(self._file_details.s3_uri, self.mode, subfiles)
+            for varname in self._cfa_variables.keys():
+                svs, sfs, open_files, subfiles = self.return_subvars(varname=varname)
+                for sf in sfs:
+                    sf.sync()
+                self.close_subfiles(sfs)
 
     @property
     def cmptypes(self):

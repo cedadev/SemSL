@@ -1646,14 +1646,24 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
     def test_flush(self):
         # TODO again this is more important with the other test blocks
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
-        f.flush()
+        testbool = False
+        try:
+            f.flush()
+        except NotImplementedError:
+            testbool = True
         f.close()
+        self.assertTrue(testbool)
 
     def test_sync(self):
         # TODO again this is more important with the other test blocks
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
-        f.sync()
+        testbool = False
+        try:
+            f.sync()
+        except NotImplementedError:
+            testbool = True
         f.close()
+        self.assertTrue(testbool)
 
     # def test_createCompoundType_cmptypes(self):
     #     # from netcdf4-python docs
@@ -2306,14 +2316,24 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
     def test_flush(self):
         #TODO again this is more important with the other test blocks
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
-        f.flush()
+        testbool = False
+        try:
+            f.flush()
+        except NotImplementedError:
+            testbool = True
         f.close()
+        self.assertTrue(testbool)
 
     def test_sync(self):
         # TODO again this is more important with the other test blocks
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
-        f.sync()
+        testbool = False
+        try:
+            f.sync()
+        except NotImplementedError:
+            testbool = True
         f.close()
+        self.assertTrue(testbool)
 
     def test_createCompoundType_cmptypes(self):
         # from netcdf4-python docs
