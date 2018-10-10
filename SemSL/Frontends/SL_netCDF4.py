@@ -27,7 +27,7 @@ from collections import OrderedDict, deque
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
 _s3_private_atts = [
  # member variables
- '_file_details', '_cfa_variables', '_s3_client_config', 'filename', 'slC'
+ '_file_details', '_cfa_variables', '_s3_client_config', 'filename', 'slC', '_changed_attrs'
 ]
 netCDF4._private_atts.extend(_s3_private_atts)
 
@@ -53,6 +53,7 @@ class s3Dataset(object):
 
 
         # get the file details
+        self._changed_attrs = False # False if not attrs changed, true if subfiles need
         self.slC = slCache()
         self.filename = filename
         self._file_details = get_netCDF_file_details(filename, mode, diskless, persist)
@@ -345,6 +346,7 @@ class s3Dataset(object):
                 return self._cfa_variables[varname]
 
 
+
     def close(self):
         """Close the netCDF file.  If it is a S3 file and the mode is write then upload to the storage."""
         # for each variable, get the accessed subfiles
@@ -365,7 +367,49 @@ class s3Dataset(object):
         # construct backend path for each subfile
         if not self._file_details.s3_uri == '':
             cache_path = sl_config['cache']['location']
-            subfiles = [sf.replace(cache_path,'') for sf in subfiles]
+            subfiles = [sf.replace(cache_path, '') for sf in subfiles]
+
+        # TODO work out what needs updating in the subfiles and update them
+        # What functions?
+        # Setattr, setncttr_string, delattr, ncatts, chunking
+        # rename att
+        #if self._changed_attrs:
+        #get glob attrs from master file
+        globattrs_list = self.ncattrs()  # this is a list, it needs to be a dict
+        globattrs = {}
+        for att in globattrs_list:
+            globattrs[att] = self.getncattr(att)
+        for varname in self._cfa_variables.keys():
+            if self._cfa_variables[varname]._changed_attrs:
+                varattrs_list = self.variables[varname].ncattrs() # this is a list, it needs to be a dict
+                varattrs = {}
+                for att in varattrs_list:
+                    varattrs[att] = self.variables[varname].getncattr(att)
+                #print(varattrs)
+                svs, sfs, open_files, subfiles_attr = self.return_subvars(varname=varname)
+                # add any subfiles into the list of files to upload
+
+                for subfile in subfiles_attr:
+                    if slU._get_alias(subfile): # only append if the file is in a backend
+                        subfiles.append(subfile)
+                #print('IN FILE CLOSE: VAR ATTS {}'.format(varattrs))
+                for sv in svs:
+                    sv.setncatts(varattrs)
+                    if not varattrs_list == sv.ncattrs():
+                        for old_att in sv.ncattrs():
+                            if not old_att in varattrs_list:
+                                sv.delncattr(old_att)
+                for sf in sfs:
+                    sf.setncatts(globattrs)
+                    if not globattrs_list == sf.ncattrs():
+                        for old_att in sf.ncattrs():
+                            if not old_att in globattrs_list:
+                                sf.delncattr(old_att)
+                self.close_subfiles(sfs)
+                #self.upload_subfiles(subfiles_attr)
+
+        # remove duplicates from the subfiles list
+        subfiles = list(set(subfiles))
 
 
         if (self._file_details.filemode == 'w' or
@@ -660,7 +704,7 @@ class s3Variable(object):
     """
 
     _private_atts = ["_cfa_var", "_nc_var", "_cfa_file", "_init_params","subfiles_accessed",
-                     "slC","_varid", "chartostring"]
+                     "slC","_varid", "chartostring","_changed_attrs"]
 
     def __init__(self, nc_var, cfa_file, cfa_var, init_params = {}):
         """Keep a reference to the nc_file, nc_var and cfa_var"""
@@ -672,6 +716,7 @@ class s3Variable(object):
         self.slC = slCache()
         self._varid = nc_var._varid
         self.chartostring = nc_var.chartostring
+        self._changed_attrs = False
 
     def _accessed_subfiles(self):
         return self.subfiles_accessed
@@ -810,13 +855,14 @@ class s3Variable(object):
         #print('ENTERED VAR SETATTR')
         self._nc_var.setncattr(name, value)
         if self._cfa_file is not None:
-            svs, sfs, open_files = self.return_subvars(self.name)
-            # loop through variables
-            for sv in svs:
-                sv.setncattr(name, value)
-                assert sv.getncattr(name) == value
-            self.close_subfiles(sfs)
-            self.upload_subfiles(open_files)
+            self._changed_attrs = True
+            # svs, sfs, open_files = self.return_subvars(self.name)
+            # # loop through variables
+            # for sv in svs:
+            #     sv.setncattr(name, value)
+            #     assert sv.getncattr(name) == value
+            # self.close_subfiles(sfs)
+            # self.upload_subfiles(open_files)
 
     def setncattr_string(self, name, value):
         # copy to the cfa_var
@@ -825,12 +871,13 @@ class s3Variable(object):
         self._nc_var.setncattr(name, value)
 
         if self._cfa_file is not None:
-            svs, sfs, open_files = self.return_subvars(self.name)
-            # loop through variables
-            for sv in svs:
-                sv.setncattr(name, value)
-            self.close_subfiles(sfs)
-            self.upload_subfiles(open_files)
+            self._changed_attrs = True
+            # svs, sfs, open_files = self.return_subvars(self.name)
+            # # loop through variables
+            # for sv in svs:
+            #     sv.setncattr(name, value)
+            # self.close_subfiles(sfs)
+            # self.upload_subfiles(open_files)
 
     def setncatts(self, attdict):
         # copy to the cfa_var
@@ -840,12 +887,13 @@ class s3Variable(object):
         #print('IN SET ATTS {}'.format(self._cfa_file))
 
         if self._cfa_file is not None:
-            svs, sfs, open_files = self.return_subvars(self.name)
-            # loop through variables
-            for sv in svs:
-                sv.setncatts(attdict)
-            self.close_subfiles(sfs)
-            self.upload_subfiles(open_files)
+            self._changed_attrs = True
+            # svs, sfs, open_files = self.return_subvars(self.name)
+            # # loop through variables
+            # for sv in svs:
+            #     sv.setncatts(attdict)
+            # self.close_subfiles(sfs)
+            # self.upload_subfiles(open_files)
 
     def getncattr(self, name, encoding='utf-8'):
         return self._nc_var.getncattr(name, encoding)
@@ -855,13 +903,14 @@ class s3Variable(object):
         self._nc_var.delncattr(name)
 
         if self._cfa_file is not None:
-            svs, sfs, open_files = self.return_subvars(self.name)
-            # loop through variables
-            for sv in svs:
-                #print('IN VAR DELATTR {}'.format(sv.ncattrs()))
-                sv.delncattr(name)
-            self.close_subfiles(sfs)
-            self.upload_subfiles(open_files)
+            self._changed_attrs = True
+            # svs, sfs, open_files = self.return_subvars(self.name)
+            # # loop through variables
+            # for sv in svs:
+            #     #print('IN VAR DELATTR {}'.format(sv.ncattrs()))
+            #     sv.delncattr(name)
+            # self.close_subfiles(sfs)
+            # self.upload_subfiles(open_files)
 
     def filters(self):
         return self._nc_var.filters()
@@ -897,7 +946,8 @@ class s3Variable(object):
         elif name == "shape":
             raise AttributeError("shape cannot be altered")
         else:
-            self._nc_var.__setattr__(name, value)
+            self.setncattr(name,value)
+            #self._nc_var.__setattr__(name, value)
 
         # if self._cfa_file is not None:
         #     svs, sfs, open_files = self.return_subvars(self.name)
@@ -949,12 +999,13 @@ class s3Variable(object):
         self._nc_var.renameAttribute(oldname, newname)
 
         if self._cfa_file is not None:
-            svs, sfs, open_files = self.return_subvars(self.name)
-            # loop through variables
-            for sv in svs:
-                sv.renameAttribute(oldname, newname)
-            self.close_subfiles(sfs)
-            self.upload_subfiles(open_files)
+            self._changed_attrs = True
+            # svs, sfs, open_files = self.return_subvars(self.name)
+            # # loop through variables
+            # for sv in svs:
+            #     sv.renameAttribute(oldname, newname)
+            # self.close_subfiles(sfs)
+            # self.upload_subfiles(open_files)
 
     def __len__(self):
         return self._nc_var.__len__()

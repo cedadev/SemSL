@@ -356,7 +356,9 @@ class slCacheManager(object):
 
                 for file in files_in_backend:
                     fname = self._get_fname(file)
-                    backend.upload(client,self.DB.cache_loc+'/'+fname,bucket,fname)
+                    cachedfile = self.DB.cache_loc+'/'+fname
+                    cachedfile.replace('//','/')
+                    backend.upload(client,cachedfile,bucket,fname)
 
     def _remove_file(self,fid,silent=True):
         key = slU._get_key(fid)
