@@ -115,6 +115,7 @@ class slCacheManager(object):
         """
 
         # get location of file
+        #print('file for upload {}'.format(fid))
         cloc = self.DB.get_cache_loc(fid)
         client = self._return_client(fid)
         bucket = slU._get_bucket(fid)

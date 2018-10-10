@@ -124,7 +124,6 @@ class _baseInterface(object):
         # copy the data in
         var[tuple(py_target_slice)] = self._data[tuple(py_source_slice)]
         ncfile.close()
-
         return part.subarray.file
 
 

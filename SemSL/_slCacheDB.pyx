@@ -416,6 +416,19 @@ class slCacheDB_lmdb(slCacheDB):
                 cache_loc = '{}{}'.format(self.cache_loc, fpath)
             cursor.put(key_cl.encode(), cache_loc.encode())
 
+    def rename_entry(self,oldnames,newnames):
+        # get size of old entry
+        #print(self.get_all_fids())
+        for i in range(len(oldnames)):
+            #print('new name {}'.format(newnames[i]))
+            #print('old name {}'.format(oldnames[i]))
+            filesize = self.get_file_size(oldnames[i])
+            # add new entry
+
+            self.add_entry(newnames[i])#,filesize)
+            # delete old entry
+            self.remove_entry(oldnames[i])
+
     def remove_entry(self,fid):
         # need to convert to bytes string
         key_ct = '{}_create_time'.format(fid)

@@ -127,7 +127,7 @@ class s3Dataset(object):
 
                         #self._cfa_variables[v].setncattr('_varid', self.variables[v]._varid)
                         self._variables_overwritten_by_cfa[v] = self.variables[v]
-                        # TODO try to fix the rename while retaining the overwrite of variables with cfa variables
+
                         # first try to diagnose why _nc_var isn't passing properly to the cfa variable
                         # create new getter and setter??
                         self.variables[v] = self._cfa_variables[v]
@@ -356,25 +356,21 @@ class s3Dataset(object):
         sl_config = slConfig()
 
         for v in self._cfa_variables.values():
-            self.subfiles_accessed.append(v._accessed_subfiles())
+            self.subfiles_accessed.extend(v._accessed_subfiles())
         # flatten the list
-        subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
-        try:
-            subfiles = subfiles[0] # Need to do this because previous command create a list with a single list in
-        except IndexError:
-            pass
-
+        # subfiles = list(itertools.chain.from_iterable(self.subfiles_accessed))
+        # try:
+        #     subfiles = subfiles[0] # Need to do this because previous command create a list with a single list in
+        # except IndexError:
+        #     pass
+        subfiles = self.subfiles_accessed
         # construct backend path for each subfile
-        if not self._file_details.s3_uri == '':
-            cache_path = sl_config['cache']['location']
-            subfiles = [sf.replace(cache_path, '') for sf in subfiles]
+        # if not self._file_details.s3_uri == '':
+        #     cache_path = sl_config['cache']['location']
+        #     subfiles = [sf.replace(cache_path, '') for sf in subfiles]
 
-        # TODO work out what needs updating in the subfiles and update them
-        # What functions?
-        # Setattr, setncttr_string, delattr, ncatts, chunking
-        # rename att
-        #if self._changed_attrs:
-        #get glob attrs from master file
+        # Update the attributes of the subfiles
+        # get glob attrs from master file
         globattrs_list = self.ncattrs()  # this is a list, it needs to be a dict
         globattrs = {}
         for att in globattrs_list:
@@ -409,8 +405,11 @@ class s3Dataset(object):
                 #self.upload_subfiles(subfiles_attr)
 
         # remove duplicates from the subfiles list
-        subfiles = list(set(subfiles))
-
+        #print(subfiles)
+        try:
+            subfiles = list(set(subfiles))
+        except TypeError:
+            subfiles = subfiles[0]
 
         if (self._file_details.filemode == 'w' or
                 self._file_details.filemode == "r+" or
@@ -529,6 +528,7 @@ class s3Dataset(object):
 
     @property
     def path(self):
+        # TODO need to return the backend path
         return self.ncD.path
 
     def renameAttribute(self,oldname,newname):
@@ -622,7 +622,8 @@ class s3Dataset(object):
                 sf.renameVariable(oldname, newname)
 
             self.close_subfiles(sfs)
-            self.upload_subfiles(subfiles)
+            self.subfiles_accessed.extend(subfiles)
+            #self.upload_subfiles(subfiles)
 
     def renameGroup(self,oldname,newname):
         self.ncD.renameGroup(oldname,newname)
@@ -633,10 +634,11 @@ class s3Dataset(object):
             for sf in sfs:
                 sf.renameGroup(oldname,newname)
             self.close_subfiles(sfs)
-            self.upload_subfiles(subfiles)
+            self.subfiles_accessed.extend(subfiles)
+            #self.upload_subfiles(subfiles)
 
     def rename_cfa_files(self, open_files, oldname, newname):
-        # rename the cfa subfiles
+        # rename the cfa subfiles and update the cache DB
         for file in open_files:
             new_path_name = file.replace(oldname,newname)
             os.rename(file, new_path_name)
@@ -661,11 +663,15 @@ class s3Dataset(object):
             # rename the cfa files
             new_cfa_files = [x.replace(oldname,newname) for x in subfiles]
 
+            # rename entry in cacheDB
+            if not self._file_details.s3_uri == '':
+                self.slC.DB.rename_entry(subfiles, new_cfa_files)
             # Need to remove the old named files from the backend
             self.slC.remove_from_backend(subfiles)
 
             # Now upload the new files
-            self.slC.bulk_upload(new_cfa_files)
+            #self.slC.bulk_upload(new_cfa_files)
+            self.subfiles_accessed.extend(new_cfa_files)
 
     def set_auto_chartostring(self,True_or_False):
         return self.ncD.set_auto_chartostring(True_or_False)
@@ -1091,6 +1097,6 @@ class s3Variable(object):
                                          self._init_params['write_threads'], self._init_params)
         pret = write_interface.write(subset_parts, elem_slices)
 
-        self.subfiles_accessed.append(pret)
+        self.subfiles_accessed.extend(pret)
 
         # TODO move percolation of variable attributes to here?? either way can miss some...

@@ -221,7 +221,7 @@ class test_set1_ReadWrite(unittest.TestCase):
         s3.delete_object(Bucket='databucket',Key='testnc_noncfa.nc')
         s3.delete_bucket(Bucket='databucket')
 
-class test_set3_Methods_posix(unittest.TestCase):
+class test_set3_Methods_posix_cfa(unittest.TestCase):
     def setUp(self):
         # Create test dataset
         f = Dataset('./testnc_methods.nc', 'w')
@@ -1521,7 +1521,7 @@ class test_set2_Methods_posix_noncfa(unittest.TestCase):
         f.close()
 
 
-class test_set5_Methods_s3(unittest.TestCase):
+class test_set5_Methods_s3_cfa(unittest.TestCase):
     def setUp(self):
         # Create test dataset
         self.f = Dataset('s3://minio/databucket/testnc_methods.nc', 'w')
