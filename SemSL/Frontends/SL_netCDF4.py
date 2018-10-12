@@ -481,7 +481,7 @@ class s3Dataset(object):
         return self.ncD.file_format
 
     def filepath(self,encoding=None):
-        return self.ncD.filepath(encoding)
+        return self.filename
 
     def get_variables_by_attribute(self,**kwargs):
         return self.ncD.get_variables_by_attributes(**kwargs)

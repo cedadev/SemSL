@@ -1808,11 +1808,11 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         self.assertEqual(f.data_model, 'NETCDF4')
         f.close()
 
-    # TODO def test_filepath(self):
-    #     # TODO what should this return, the s3 path or the path in cache
-    #     f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
-    #     self.assertEqual(f.filepath(), 's3://minio/databucket/testnc_methods.nc')
-    #     f.close()
+    def test_filepath(self):
+        # TODO what should this return, the s3 path or the path in cache
+        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        self.assertEqual(f.filepath(), 's3://minio/databucket/testnc_methods.nc')
+        f.close()
 
     def test_get_variables_by_attribute(self):
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
@@ -2506,7 +2506,7 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
     def test_filepath(self):
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
         sl_config = slConfig()
-        self.assertEqual(f.filepath(),sl_config['cache']['location']+'testnc_methods.nc')
+        self.assertEqual(f.filepath(),'s3://minio/databucket/testnc_methods.nc')
         f.close()
 
     def test_get_variables_by_attribute(self):
@@ -2892,7 +2892,7 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
 
 Problems TODO
     - (I think I fixed this)name of file needs a path, even just ./test.nc not just test.nc otherwise it looks for an alias -- needs fixing
-    - setting and getting attr with f.attrname not working
+    - (i think i fixed this)  setting and getting attr with f.attrname not working
 
 Questions:
     - do subfiles need to retain the attributes of the variable in the master file? 
@@ -2900,85 +2900,7 @@ Questions:
     
 Ideas for tests
     - multi variables
-    - which methods? (don't need to test the ones passed straight through)  
-        Dataset:
-            getVariables
-            ncattrs
-            createDimension
-            createVariable
-            close
-            flush
-            sync
-            cmptypes
-            createCompoundType
-            createEnumType
-            createGroup
-            createVLType
-            data_model
-            delncattr
-            dimensions
-            disk_format
-            enumtypes
-            file_format
-            filepath
-            get_variables_by_attribute
-            getncattr
-            parent
-            path
-            renameAttribute
-            renameDimension
-            renameGroup
-            renameVariable
-            set_auto_chartostring
-            set_auto_mask
-            set_auto_maskandscale
-            set_auto_scale
-            set_fill_off
-            set_fill_on
-            setncattr
-            setncattr_string
-            setncattrs
-        Variable:
-            _accessed_subfiles
-            __repr__
-            __array__
-            __unicode__
-            name
-            name
-            datatype
-            shape
-            _shape
-            _size
-            _dimensions
-            group
-            ncattrs
-            setncattr
-            setncattr_string
-            setncatts
-            getncattr
-            delncattr
-            filters
-            endian
-            chunking
-            get_var_chunk_cache
-            set_var_chunk_cache
-            __delattr__
-            __setattr__
-            __getattr__
-            renameAttribute
-            __len__
-            assignValue
-            getValue
-            set_auto_chartostring
-            set_auto_maskandscale
-            set_auto_scale
-            set_auto_mask
-            __reduce__
-            __getitem__
-            __setitem__
     
-
-
 """
 
 if __name__ == '__main__':
