@@ -33,6 +33,7 @@ DIMSIZE = 20
 class test_set1_ReadWrite(unittest.TestCase):
 
     def test_1_posix_write(self):
+
         self.f = Dataset('./testnc.nc','w')
         self.f.test = 'Created for SemSL tests'
 
@@ -125,7 +126,6 @@ class test_set1_ReadWrite(unittest.TestCase):
         self.f.close()
 
     def test_3_remove_posix(self):
-
         os.remove('./testnc.nc')
         subfiles = glob('./testnc/*.nc')
         for f in subfiles:
@@ -176,7 +176,7 @@ class test_set1_ReadWrite(unittest.TestCase):
         np.random.seed(0)
         self.var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
         self.f.close()
-        # TODO: Check what is in the cacheDB and cache area?
+
         slDB = slCacheDB()
         allcachedfids = slDB.get_all_fids()
         cacheareafiles = glob('/home/matthew/cachearea/*.nc')
@@ -247,7 +247,7 @@ class test_set3_Methods_posix_cfa(unittest.TestCase):
         #print('IN TEST: {}'.format(self.var._cfa_file))
         #print('IN TEST: {}'.format(type(self.var)))
         #print('INTEST: {}'.format(self.var.setncattr))
-        # TODO currently need to do __setitem__ before setting any
+
         np.random.seed(0)
         var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
         var.setncattr('units','test unit')
@@ -282,15 +282,18 @@ class test_set3_Methods_posix_cfa(unittest.TestCase):
         f = Dataset('testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncattr('newtest','newtestvalue')
+        v.settest = 'settestvalue'
         f.close()
         f = Dataset('./testnc_methods.nc', 'r')
         v = f.variables['var']
-        self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
+        self.assertEqual(v.newtest, 'newtestvalue')
+        self.assertEqual(v.getncattr('settest'), 'settestvalue')
         f.close()
         # now check a subfile...
         f = Dataset('./testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
-        self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
+        self.assertEqual(v.newtest, 'newtestvalue')
+        self.assertEqual(v.getncattr('settest'), 'settestvalue')
         f.close()
 
     def test_getVariables(self):
@@ -1809,7 +1812,6 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         f.close()
 
     def test_filepath(self):
-        # TODO what should this return, the s3 path or the path in cache
         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
         self.assertEqual(f.filepath(), 's3://minio/databucket/testnc_methods.nc')
         f.close()
@@ -2893,10 +2895,10 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
 Problems TODO
     - (I think I fixed this)name of file needs a path, even just ./test.nc not just test.nc otherwise it looks for an alias -- needs fixing
     - (i think i fixed this)  setting and getting attr with f.attrname not working
+    - I don't think groups work
+    - custom datatypes don't work
 
 Questions:
-    - do subfiles need to retain the attributes of the variable in the master file? 
-    - what happens when the varible name is changed?? Change in sub files as well -- retain all the variable information in the sub files as well
     
 Ideas for tests
     - multi variables

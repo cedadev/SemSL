@@ -498,7 +498,7 @@ class s3Dataset(object):
 
     @property
     def path(self):
-        # TODO need to return the backend path
+
         return self.ncD.path
 
     def renameAttribute(self,oldname,newname):
@@ -712,7 +712,7 @@ class s3Variable(object):
 
     def upload_subfiles(self,file_list):
         # upload sub files in bulk, won't do anything if posix files are passed to it
-        # TODO instead shouldn't I just add to the changed subfiles list??
+
         self.slC.bulk_upload(file_list)
 
     def check_whether_posix(self,file):
@@ -1069,4 +1069,4 @@ class s3Variable(object):
 
         self.subfiles_accessed.extend(pret)
 
-        # TODO move percolation of variable attributes to here?? either way can miss some...
+
