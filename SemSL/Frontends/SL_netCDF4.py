@@ -355,53 +355,7 @@ class s3Dataset(object):
 
         sl_config = slConfig()
 
-        for v in self._cfa_variables.values():
-            self.subfiles_accessed.extend(v._accessed_subfiles())
-
-        # Add subfiles to the accessed subfiles
-        subfiles = self.subfiles_accessed
-
-        # Update the attributes of the subfiles
-        # get glob attrs from master file
-        globattrs_list = self.ncattrs()  # this is a list, it needs to be a dict
-        globattrs = {}
-        for att in globattrs_list:
-            globattrs[att] = self.getncattr(att)
-        for varname in self._cfa_variables.keys():
-            if self._cfa_variables[varname]._changed_attrs:
-                varattrs_list = self.variables[varname].ncattrs() # this is a list, it needs to be a dict
-                varattrs = {}
-                for att in varattrs_list:
-                    varattrs[att] = self.variables[varname].getncattr(att)
-                #print(varattrs)
-                svs, sfs, open_files, subfiles_attr = self.return_subvars(varname=varname)
-                # add any subfiles into the list of files to upload
-
-                for subfile in subfiles_attr:
-                    if slU._get_alias(subfile): # only append if the file is in a backend
-                        subfiles.append(subfile)
-                #print('IN FILE CLOSE: VAR ATTS {}'.format(varattrs))
-                for sv in svs:
-                    sv.setncatts(varattrs)
-                    if not varattrs_list == sv.ncattrs():
-                        for old_att in sv.ncattrs():
-                            if not old_att in varattrs_list:
-                                sv.delncattr(old_att)
-                for sf in sfs:
-                    sf.setncatts(globattrs)
-                    if not globattrs_list == sf.ncattrs():
-                        for old_att in sf.ncattrs():
-                            if not old_att in globattrs_list:
-                                sf.delncattr(old_att)
-                self.close_subfiles(sfs)
-                #self.upload_subfiles(subfiles_attr)
-
-        # remove duplicates from the subfiles list
-        #print(subfiles)
-        try:
-            subfiles = list(set(subfiles))
-        except TypeError:
-            subfiles = subfiles[0]
+        subfiles = self.get_subfiles_accessed()
 
         if (self._file_details.filemode == 'w' or
                 self._file_details.filemode == "r+" or
@@ -415,27 +369,102 @@ class s3Dataset(object):
         netCDF4.Dataset.close(self.ncD)
         slC = slCache()
         if self._file_details.s3_uri == '':
-            slC.close(self._file_details.filename,self.mode,self.subfiles_accessed)
+            slC.close(self._file_details.filename,self.mode,subfiles)
         else:
             slC.close(self._file_details.s3_uri,self.mode,subfiles)
 
     def flush(self):
         return self.sync()
 
+    def update_cfa_meta(self,subfiles):
+        # Update the attributes of the subfiles
+        # get glob attrs from master file
+        changed_files = subfiles.copy()
+
+        globattrs_list = self.ncattrs()  # this is a list, it needs to be a dict
+        globattrs = {}
+        for att in globattrs_list:
+            globattrs[att] = self.getncattr(att)
+        for varname in self._cfa_variables.keys():
+            if self._cfa_variables[varname]._changed_attrs:
+                varattrs_list = self.variables[varname].ncattrs()  # this is a list, it needs to be a dict
+                varattrs = {}
+                for att in varattrs_list:
+                    varattrs[att] = self.variables[varname].getncattr(att)
+                # print(varattrs)
+                svs, sfs, open_files, subfiles_attr = self.return_subvars(varname=varname)
+                # add any subfiles into the list of files to upload
+
+                for subfile in subfiles_attr:
+                    if slU._get_alias(subfile):  # only append if the file is in a backend
+                        changed_files.append(subfile)
+                # print('IN FILE CLOSE: VAR ATTS {}'.format(varattrs))
+                for sv in svs:
+                    sv.setncatts(varattrs)
+                    if not varattrs_list == sv.ncattrs():
+                        for old_att in sv.ncattrs():
+                            if not old_att in varattrs_list:
+                                sv.delncattr(old_att)
+                for sf in sfs:
+                    sf.setncatts(globattrs)
+                    if not globattrs_list == sf.ncattrs():
+                        for old_att in sf.ncattrs():
+                            if not old_att in globattrs_list:
+                                sf.delncattr(old_att)
+                self.close_subfiles(sfs)
+        return changed_files
+
+    def sync_subfiles(self):
+        for varname in self._cfa_variables.keys():
+            svs, sfs, open_files, subfiles = self.return_subvars(varname=varname)
+            for sf in sfs:
+                sf.sync()
+            self.close_subfiles(sfs)
+
+    def get_subfiles_accessed(self):
+        for v in self._cfa_variables.values():
+            self.subfiles_accessed.extend(v._accessed_subfiles())
+
+        # Add subfiles to the accessed subfiles
+        subfiles = self.subfiles_accessed
+
+        # update meta data in cfa files
+        updated_files = self.update_cfa_meta(subfiles)
+        # add the changed files to the list of subfiles accessed
+        subfiles.extend(updated_files)
+
+        # remove duplicates from the subfiles list
+        try:
+            subfiles = list(set(subfiles))
+        except TypeError:
+            subfiles = subfiles[0]
+
+        return subfiles
+
     def sync(self):
         """ Overloads the netcdf4 method which syncs to disk.
             Syncs the open dataset to disk and backend as required.
         """
+        # TODO update meta for cfa
+
+        subfiles = self.get_subfiles_accessed()
+
+
         if not self._file_details.s3_uri == '':
-            raise NotImplementedError('Sync/flush is not implemented for files in a backend. Call close() on the dataset inorder to sync.')
+            #raise NotImplementedError('Sync/flush is not implemented for files in a backend. Call close() on the dataset inorder to sync.')
+            # sync main file
+            self.ncD.sync()
+            self.sync_subfiles()
+
         elif not self._file_details.cfa_file:
             self.ncD.sync()
         else:
-            for varname in self._cfa_variables.keys():
-                svs, sfs, open_files, subfiles = self.return_subvars(varname=varname)
-                for sf in sfs:
-                    sf.sync()
-                self.close_subfiles(sfs)
+            self.ncD.sync()
+            self.sync_subfiles()
+            self.slC.close(self._file_details.s3_uri,self.mode,subfiles)
+
+        # All subfiles are up to date to clear the list of accessed files
+        self.subfiles_accessed = []
 
     @property
     def cmptypes(self):
