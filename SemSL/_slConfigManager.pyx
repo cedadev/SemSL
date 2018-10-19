@@ -74,7 +74,8 @@ class slConfig(object):
             self._sl_user_config["filename"] = sl_config_path
             keys_to_convert = ["object_size",
                                "cache_size",
-                               "object_size_for_memory"]
+                               "object_size_for_memory",
+                               "default_object_size"]
             # interpret the config file, converting the above keys
             interpret_config_file(self._sl_user_config, keys_to_convert)
             # close the config file

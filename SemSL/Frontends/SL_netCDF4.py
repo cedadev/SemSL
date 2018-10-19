@@ -256,6 +256,9 @@ class s3Dataset(object):
            For CF-netCDF files, create the variable with no dimensions, and create the
            required CFA metadata."""
 
+        # TODO need to check that the dimension variables are created before the non dimension variables
+        # TODO need to make sure that the chunkshape does not exceed the subvar shape
+
         slC = slCache()
         #print('IN CREATE VAR {}'.format(self._file_details.cfa_file))
         if self._file_details.cfa_file is None:
@@ -295,9 +298,18 @@ class s3Dataset(object):
                 # create the partitions, i.e. a list of CFAPartition, and get the partition shape
                 # get the max file size from the s3ClientConfig
                 #print('BASE FILENAME: {}'.format(base_filename))
+
+                # Get the host name in order to get the obj size, otherwise refer to default
+                try:
+                    host_name = slU._get_hostname(self._file_details.filename)
+                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                except ValueError:
+                    obj_size = 0
+                    obj_size = self._s3_client_config['system']['default_object_size']
+                    
                 pmshape, partitions = create_partitions(base_filename, self, dimensions,
                                                         varname, var_shape, var.dtype,
-                                                        max_file_size=100000,
+                                                        max_file_size=obj_size,
                                                         format="netCDF")
                 # create the CFAVariable here
                 self._file_details.cfa_file.cfa_vars[varname] = CFAVariable(varname,
@@ -321,12 +333,7 @@ class s3Dataset(object):
                         md = {k: self.variables[d].getncattr(k) for k in self.variables[d].ncattrs()}
                         self._file_details.cfa_file.cfa_dims[d].metadata = md
 
-                # Get the host name in order to get the specific settings
-                try:
-                    host_name = slU._get_hostname(self._file_details.filename)
-                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
-                except ValueError:
-                    obj_size = 0
+
 
 
                 # keep the calling parameters in a dictionary, and add the parameters from the client config
