@@ -5,6 +5,8 @@ or to a file on a POSIX file system.
 Author: Neil Massey
 Date:   07/09/2017
 """
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
 
 #from _s3Client import *
 from _s3Exceptions import *

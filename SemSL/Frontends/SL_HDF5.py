@@ -1,4 +1,6 @@
 """ test untility functions of SemSL"""
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
 
 import SemSL._slArrayInterp as slArr
 

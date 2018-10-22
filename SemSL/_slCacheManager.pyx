@@ -6,6 +6,9 @@ the disk cache before, going to the backend, and if the file exists in cache the
 is sent to the backend. Once the cache is full, the least recently accessed files are removed in order to make space.
 """
 
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
+
 import os
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager

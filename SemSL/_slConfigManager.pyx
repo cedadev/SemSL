@@ -3,6 +3,9 @@ Configuration management for Sem-SL.  Configuration is stored for each user in
 a JSON file in their home directory: ~/.sem-sl.json
 """
 
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
+
 import os
 import json
 from _slExceptions import slIOException, slAPIException

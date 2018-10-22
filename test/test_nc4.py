@@ -2,6 +2,8 @@
 
 ''' This file tests the SemSL netcdf4 frontend.
 '''
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
 
 import unittest
 import numpy as np
@@ -9,7 +11,7 @@ import os
 import sys
 from glob import glob
 
-from SemSL.Frontends.SL_netCDF4 import s3Dataset as Dataset
+from SemSL.Frontends.SL_netCDF4 import slDataset as Dataset
 from SemSL._slCacheManager import slCacheManager
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager

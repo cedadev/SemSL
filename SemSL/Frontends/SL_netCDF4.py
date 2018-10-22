@@ -1,15 +1,15 @@
 """ SemSL interface to netCDF files"""
-
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
 
 #This module inherits from the standard netCDF4 implementation
 # import as UniData netCDF4 to avoid confusion with the S3 module
 
 import netCDF4._netCDF4 as netCDF4
-from SemSL._s3netCDFIO import get_netCDF_file_details
-from SemSL._s3Exceptions import *
+from SemSL._slnetCDFIO import get_netCDF_file_details
+from SemSL._slExceptions import *
 from SemSL._CFAClasses import *
 from SemSL._CFAFunctions import *
-#from _s3Client import s3ClientConfig
 from psutil import virtual_memory
 
 from SemSL._slConfigManager import slConfig
@@ -25,13 +25,13 @@ from collections import OrderedDict, deque
 
 # these are class attributes that only exist at the python level (not in the netCDF file).
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
-_s3_private_atts = [
+_sl_private_atts = [
  # member variables
- '_file_details', '_cfa_variables', '_s3_client_config', 'filename', 'slC', '_changed_attrs'
+ '_file_details', '_cfa_variables', '_sl_config', 'filename', 'slC', '_changed_attrs'
 ]
-netCDF4._private_atts.extend(_s3_private_atts)
+netCDF4._private_atts.extend(_sl_private_atts)
 
-class s3Dataset(object):
+class slDataset(object):
     """
        Inherit the UniData netCDF4 Dataset class and override some key member functions to allow the
        read and write of netCDF file to an object store accessed via an AWS S3 HTTP API.
@@ -61,7 +61,7 @@ class s3Dataset(object):
         self._variables_overwritten_by_cfa = OrderedDict()
 
         # get the s3ClientConfig for paths to the cache and max file size
-        self._s3_client_config = slConfig()
+        self._sl_config = slConfig()
 
         # list of subfiles accessed since intialistion
         self.subfiles_accessed = deque()
@@ -106,7 +106,7 @@ class s3Dataset(object):
                 #print('CFA FILE')
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
-                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                    obj_size = self._sl_config['hosts'][host_name]['object_size']
                 except ValueError:
                     obj_size = 0
                 # Parse the CFA metadata from this class' metadata
@@ -116,10 +116,10 @@ class s3Dataset(object):
                 # recreate the variables as s3Variables and attach the cfa data
                 for v in self.variables:
                     if v in self._file_details.cfa_file.cfa_vars:
-                        self._cfa_variables[v] = s3Variable(self.variables[v],
+                        self._cfa_variables[v] = slVariable(self.variables[v],
                                                             self._file_details.cfa_file,
                                                             self._file_details.cfa_file.cfa_vars[v],
-                                                            {'cache_location' : self._s3_client_config['cache']['location'],
+                                                            {'cache_location' : self._sl_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
                                                              'read_threads' : 1})
                         #print(self.variables[v]._varid)
@@ -184,7 +184,7 @@ class s3Dataset(object):
                 # Get the host name in order to get the specific settings
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
-                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                    obj_size = self._sl_config['hosts'][host_name]['object_size']
                 except ValueError:
                     obj_size = 0
                 # Parse the CFA metadata from this class' metadata
@@ -193,10 +193,10 @@ class s3Dataset(object):
                 # recreate the variables as s3Variables and attach the cfa data
                 for v in self.variables:
                     if v in self._file_details.cfa_file.cfa_vars:
-                        self._cfa_variables[v] = s3Variable(self.variables[v],
+                        self._cfa_variables[v] = slVariable(self.variables[v],
                                                             self._file_details.cfa_file,
                                                             self._file_details.cfa_file.cfa_vars[v],
-                                                            {'cache_location' : self._s3_client_config['cache']['location'],
+                                                            {'cache_location' : self._sl_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
                                                              'read_threads' : 1})
                         self.variables[v] = self._cfa_variables[v]
@@ -302,11 +302,11 @@ class s3Dataset(object):
                 # Get the host name in order to get the obj size, otherwise refer to default
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
-                    obj_size = self._s3_client_config['hosts'][host_name]['object_size']
+                    obj_size = self._sl_config['hosts'][host_name]['object_size']
                 except ValueError:
                     obj_size = 0
-                    obj_size = self._s3_client_config['system']['default_object_size']
-                    
+                    obj_size = self._sl_config['system']['default_object_size']
+
                 pmshape, partitions = create_partitions(base_filename, self, dimensions,
                                                         varname, var_shape, var.dtype,
                                                         max_file_size=obj_size,
@@ -342,12 +342,12 @@ class s3Dataset(object):
                               'contiguous' : contiguous, 'chunksizes' : chunksizes, 'endian' : endian,
                               'least_significant_digit' : least_significant_digit,
                               'fill_value' : fill_value, 'chunk_cache' : chunk_cache,
-                              'cache_location' : self._s3_client_config['cache']['location'],
+                              'cache_location' : self._sl_config['cache']['location'],
                               'max_object_size_for_memory' : obj_size,
                               'write_threads' : 1}
 
                 # create the s3Variable which is a reimplementation of the netCDF4 variable
-                self._cfa_variables[varname] = s3Variable(var, self._file_details.cfa_file,
+                self._cfa_variables[varname] = slVariable(var, self._file_details.cfa_file,
                                                           self._file_details.cfa_file.cfa_vars[varname],
                                                           parameters)
                 return self._cfa_variables[varname]
@@ -710,7 +710,7 @@ class s3Dataset(object):
     def vltypes(self):
         return self.ncD.vltypes
 
-class s3Variable(object):
+class slVariable(object):
     """
       Reimplement the UniData netCDF4 Variable class and override some key methods so as to enable CFA and S3 functionality
     """
@@ -951,7 +951,7 @@ class s3Variable(object):
         #     self.upload_subfiles(open_files)
 
     def __setattr__(self, name, value):
-        if name in s3Variable._private_atts:
+        if name in slVariable._private_atts:
             self.__dict__[name] = value
         elif name == "dimensions":
             raise AttributeError("dimensions cannot be altered")
@@ -978,7 +978,7 @@ class s3Variable(object):
 
     def __getattr__(self, name):
         # check whether it is _nc_var or _cfa_var
-        if name in s3Variable._private_atts:
+        if name in slVariable._private_atts:
             return self.__dict__[name]
         elif name == "dimensions":
             return tuple(self._dimensions())

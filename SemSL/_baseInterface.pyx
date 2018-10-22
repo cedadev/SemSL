@@ -1,8 +1,11 @@
 """
-   Class containing the base interface for reading / writing / uploading the netCDF files, to either disk or S3.
+   Class containing the base interface for reading / writing / uploading the netCDF files, to either disk or a backend.
    These can be overloaded to provide the capability to use different methods of parallelisation.
    This "base" interface implements a simple serial way of reading, writing and uploading.
 """
+
+__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__license__ = "BSD - see LICENSE file in top-level directory"
 
 #from ._s3netCDFIO import get_netCDF_file_details, put_netCDF_file
 import netCDF4._netCDF4 as netCDF4
