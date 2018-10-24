@@ -61,6 +61,8 @@ class test_set1_ReadWrite(unittest.TestCase):
         self.var.setncattr('units', 'test unit')
         self.f.close()
 
+
+
     def test_4_s3_write(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'w')
         self.f.test = 'Created for SemSL tests'
@@ -222,6 +224,48 @@ class test_set1_ReadWrite(unittest.TestCase):
         s3 = conn.get()
         s3.delete_object(Bucket='databucket',Key='testnc_noncfa.nc')
         s3.delete_bucket(Bucket='databucket')
+
+    def test_10_posix_chunk_write(self):
+
+        self.f = Dataset('./testnc.nc','w')
+        self.f.test = 'Created for SemSL tests'
+
+        dim1 = self.f.createDimension('T', DIMSIZE)
+        dim1d = self.f.createVariable('T', 'i4', ('T',))
+        dim1d[:] = range(DIMSIZE)
+        dim2 = self.f.createDimension('Z', DIMSIZE)
+        dim2d = self.f.createVariable('Z', 'i4', ('Z',))
+        dim2d[:] = range(DIMSIZE)
+        dim3 = self.f.createDimension('Y', DIMSIZE)
+        dim3d = self.f.createVariable('Y', 'i4', ('Y',))
+        dim3d[:] = range(DIMSIZE)
+        dim4 = self.f.createDimension('X', DIMSIZE)
+        dim4d = self.f.createVariable('X', 'i4', ('X',))
+        dim4d[:] = range(DIMSIZE)
+        dim1d.axis = "T"
+        dim2d.axis = "Z"
+        dim3d.axis = "Y"
+        dim4d.axis = "X"
+        self.var = self.f.createVariable(VARNAME, 'f8', ('T', 'Z', 'Y', 'X'), chunksizes=(5,5,5,5))
+        np.random.seed(0)
+        self.var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+        self.var.setncattr('units', 'test unit')
+        self.f.close()
+        # check that the subfile has the right chunking
+        f = Dataset('./testnc/testnc_var_[0].nc')
+        v = f.variables['var']
+        self.assertEqual([5,5,5,5],v.chunking())
+        f.close()
+
+    def test_11_posix_chunk_remove(self):
+        os.remove('./testnc.nc')
+        subfiles = glob('./testnc/*.nc')
+        for f in subfiles:
+            os.remove(f)
+        os.rmdir('testnc')
+
+        sl_cache = slCacheManager()
+        sl_cache._clear_cache()
 
 class test_set3_Methods_posix_cfa(unittest.TestCase):
     def setUp(self):
@@ -2884,7 +2928,9 @@ Questions:
     
 Ideas for tests
     - multi variables
-    
+    - change part of an existing variable then upload to backend, download and check change has occurred i.e
+      create with zeros, close(), open dataset, change variable subsection to 1, close(), open dataset, check for 
+      changed area
 """
 
 if __name__ == '__main__':

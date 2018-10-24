@@ -284,20 +284,6 @@ class slDataset(object):
                 return var
             else:
                 # it is not so create a dimension free version
-                var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, (), zlib,
-                        complevel, shuffle, fletcher32, contiguous,
-                        chunksizes, endian, least_significant_digit,
-                        fill_value, chunk_cache)
-                # get the base / root filename of the subarray files
-                # if self._file_details.s3_uri != "":
-                #     base_filename = self._file_details.s3_uri[:self._file_details.s3_uri.rfind(".")]
-                # else:
-                #     base_filename = self._file_details.filename[:self._file_details.filename.rfind(".")]
-                base_filename = self.filename.replace('.nc','')# changed to introduce backend file name self._file_details.filename[:self._file_details.filename.rfind(".")]
-
-                # create the partitions, i.e. a list of CFAPartition, and get the partition shape
-                # get the max file size from the s3ClientConfig
-                #print('BASE FILENAME: {}'.format(base_filename))
 
                 # Get the host name in order to get the obj size, otherwise refer to default
                 try:
@@ -307,10 +293,35 @@ class slDataset(object):
                     obj_size = 0
                     obj_size = self._sl_config['system']['default_object_size']
 
-                pmshape, partitions = create_partitions(base_filename, self, dimensions,
-                                                        varname, var_shape, var.dtype,
+                # create the partitions, i.e. a list of CFAPartition, and get the partition shape
+                # get the max file size from the s3ClientConfig
+
+                base_filename = self.filename.replace('.nc','')
+                pmshape, partitions, subarrayshape = create_partitions(base_filename, self, dimensions,
+                                                        varname, var_shape, np.arange(1,dtype=datatype),
                                                         max_file_size=obj_size,
                                                         format="netCDF")
+                # The "np.arange(1,dtype=datatype)" above is a hack to get around the fact that the function expects
+                # var.dtype, but the variable hasn't been created yet!
+
+                # Check whether the chunksize is larger than the subfile size
+                # Raising this exception here means that the variable will not be created if the chunksize is not valid
+                # whereas if netcdf4 python is left to throw the exception, the master variable gets created but the
+                # sub files do not.
+                if chunksizes is not None:
+                    for i,sv_el in enumerate(subarrayshape):
+                        if chunksizes[i] > sv_el:
+                            raise ValueError('The chunksize {} is incompatible with the subarray shape {}, please'
+                                             ' make the chunksize smaller than the subarray shape.'.format
+                                                                                                    (chunksizes,
+                                                                                                     subarrayshape))
+
+                # Create the master variable
+                var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, (), zlib,
+                        complevel, shuffle, fletcher32, contiguous,
+                        chunksizes, endian, least_significant_digit,
+                        fill_value, chunk_cache)
+
                 # create the CFAVariable here
                 self._file_details.cfa_file.cfa_vars[varname] = CFAVariable(varname,
                                                                 cf_role="cfa_variable", cfa_dimensions=list(dimensions),
@@ -344,7 +355,8 @@ class slDataset(object):
                               'fill_value' : fill_value, 'chunk_cache' : chunk_cache,
                               'cache_location' : self._sl_config['cache']['location'],
                               'max_object_size_for_memory' : obj_size,
-                              'write_threads' : 1}
+                              'write_threads' : 1,
+                              'mode':self.mode}
 
                 # create the s3Variable which is a reimplementation of the netCDF4 variable
                 self._cfa_variables[varname] = slVariable(var, self._file_details.cfa_file,

@@ -288,7 +288,7 @@ def create_partitions(base_filepath, dataset, dimensions,
         partition = CFAPartition(pindex[sa], out_location, cfa_subarray)
         partitions.append(partition)
 
-    return pmshape, partitions
+    return pmshape, partitions, subarray_shape
 
 
 def partition_overlaps(partition, slices):

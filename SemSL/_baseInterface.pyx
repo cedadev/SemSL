@@ -61,7 +61,7 @@ class _baseInterface(object):
         return nc_file
 
 
-    def _write_partition(self, part, elem_slices):
+    def _write_partition(self, part, elem_slices, mode):
         """Write a single partition.  This should be used by subclasses."""
         ip = self._init_params # just a shorthand
 
@@ -71,14 +71,14 @@ class _baseInterface(object):
         slC = slCache()
         #print('TEST PRINT: SUBARRAY NAME {}'.format(part.subarray.file))
         try:
-            file_details = slC.open(part.subarray.file, access_type='w')
+            file_details = slC.open(part.subarray.file, access_type=mode)
         except ValueError:
             os.makedirs(os.path.dirname(part.subarray.file))
-            file_details = slC.open(part.subarray.file, access_type='w')
+            file_details = slC.open(part.subarray.file, access_type=mode)
         # check if the file has already been created
-        if os.path.exists(part.subarray.file):
+        if os.path.exists(part.subarray.file) and mode != 'w':
             # open the file in append mode
-            ncfile = netCDF4.Dataset(file_details, mode='r+')
+            ncfile = netCDF4.Dataset(file_details, mode=mode)
             var = ncfile.variables[self._nc_var.name]
         else:
             # first create the destination directory, if it doesn't exist
@@ -87,7 +87,7 @@ class _baseInterface(object):
                 os.makedirs(dest_dir)
 
             # create the netCDF file
-            ncfile = netCDF4.Dataset(file_details, 'w', format=self._cfa_file.format)
+            ncfile = netCDF4.Dataset(file_details, mode, format=self._cfa_file.format)
             # create the dimensions
             for d in range(0, len(self._cfa_var.pmdimensions)):
                 # get the dimension details from the _cfa_var
@@ -181,7 +181,7 @@ class _baseInterface(object):
         # write all the paritions (serially)
         partitions_accessed = []
         for part in partitions:
-            p = self._write_partition(part, elem_slices)
+            p = self._write_partition(part, elem_slices,self._init_params['mode'])
             partitions_accessed.append(p)
 
         return partitions_accessed
