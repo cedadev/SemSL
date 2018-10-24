@@ -81,7 +81,7 @@ class slDataset(object):
                 # we have to first create the dummy file (name held in file_details.memory) - check it exists before creating it
                 if not os.path.exists(self._file_details.filename):
                     temp_file = netCDF4.Dataset(c_file, 'w', format=self._file_details.format).close()
-                # create the netCDF4 dataset from the data, using the temp_file
+                    # create the netCDF4 dataset from the data, using the temp_file
                     self.ncD = netCDF4.Dataset( self._file_details.filename, mode=mode, clobber=clobber,
                                          format=self._file_details.format, diskless=True, persist=False,
                                          keepweakref=keepweakref, memory=self._file_details.memory, **kwargs)
@@ -103,7 +103,6 @@ class slDataset(object):
 
             if cfa:
                 # Get the host name in order to get the specific settings
-                #print('CFA FILE')
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
@@ -128,29 +127,17 @@ class slDataset(object):
                                                              'read_threads' : read_threads,
                                                              'write_threads' : write_threads,
                                                              'mode': mode})
-                        #print(self.variables[v]._varid)
 
-
-                        #self._cfa_variables[v].setncattr('_varid', self.variables[v]._varid)
                         self._variables_overwritten_by_cfa[v] = self.variables[v]
 
-                        # first try to diagnose why _nc_var isn't passing properly to the cfa variable
-                        # create new getter and setter??
                         self.variables[v] = self._cfa_variables[v]
-                        #print(self.variables[v]._varid)
-                        #if mode == 'a':
-                        #    print(self.variables[v]._nc_var)
-                        #    #self.variables[v]._nc_var['_varid'] = self._variables_overwritten_by_cfa[v]._varid
 
             else:
                 self._file_details.cfa_file = None
 
-
-
         elif mode == 'w':           # write
             # check the format for writing - allow CFA4 in arguments and default to it as well
             # we DEFAULT to CFA4 for writing to S3 object stores so as to distribute files across objects
-            #self.ncD = netCDF4.Dataset(c_file, mode)
             if format == 'CFA4' or format == 'DEFAULT':
                 self._file_details.format = 'NETCDF4'
                 self._file_details.cfa_file = CFAFile()
@@ -169,13 +156,6 @@ class slDataset(object):
                 self._file_details.cfa_file = None
                 cfa = None
 
-            # # for writing a file, all we have to do is check that the containing folder in the cache exists
-            # if self._file_details.filename != "":   # first check that it is not a diskless file
-            #     cache_dir = os.path.dirname(self._file_details.filename)
-            #     # create all the sub folders as well
-            #     if not os.path.isdir(cache_dir):
-            #         os.makedirs(cache_dir)
-
             # if the file is diskless and an S3 file then we have to persist so that we can upload the file to S3
             if self._file_details.s3_uri != "" and diskless:
                 persist = True
@@ -186,7 +166,6 @@ class slDataset(object):
             self.variables = self.ncD.variables
 
             if cfa:
-                #print('CFA FILE')
                 # Get the host name in order to get the specific settings
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
@@ -212,14 +191,13 @@ class slDataset(object):
                                                              'read_threads' : read_threads,
                                                              'write_threads' : write_threads,
                                                              'mode' : mode})
-                        # TODO change the read and write threads to get the information from the config
                         self.variables[v] = self._cfa_variables[v]
             else:
                 self._file_details.cfa_file = None
 
         else:
             # no other modes are supported
-            raise s3APIException("Mode " + mode + " not supported.")
+            raise ValueError("Mode " + mode + " not supported.")
         self.groups = self.ncD.groups
 
     def __enter__(self):
@@ -242,16 +220,6 @@ class slDataset(object):
         else:
             return self.variables[name]
 
-    # removed because added the f.variables in properly
-    # def getVariables(self):
-    #     """Get a list of the variable names"""
-    #     names = []
-    #     #for n in self._cfa_variables:
-    #     #    names.append(n)
-    #     for n in self.variables:
-    #         names.append(n)
-    #     return names
-
     def createDimension(self, dimname, size=None):
         """Overloaded version of createDimension that records the dimension info into a CFADim instance"""
         ncd = netCDF4.Dataset.createDimension(self.ncD, dimname, size)
@@ -259,7 +227,6 @@ class slDataset(object):
             # add to the dimensions
             self._file_details.cfa_file.cfa_dims[dimname] = CFADim(dim_name=dimname, dim_len=size)
         return ncd
-
 
     def createVariable(self, varname, datatype, dimensions=(), zlib=False,
             complevel=4, shuffle=True, fletcher32=False, contiguous=False,
@@ -270,11 +237,7 @@ class slDataset(object):
            For CF-netCDF files, create the variable with no dimensions, and create the
            required CFA metadata."""
 
-        # TODO need to check that the dimension variables are created before the non dimension variables
-        # TODO need to make sure that the chunkshape does not exceed the subvar shape
-
         slC = slCache()
-        #print('IN CREATE VAR {}'.format(self._file_details.cfa_file))
         if self._file_details.cfa_file is None:
             var = netCDF4.Dataset.createVariable(self.ncD, varname, datatype, dimensions, zlib,
                     complevel, shuffle, fletcher32, contiguous,
@@ -370,9 +333,6 @@ class slDataset(object):
                         md = {k: self.variables[d].getncattr(k) for k in self.variables[d].ncattrs()}
                         self._file_details.cfa_file.cfa_dims[d].metadata = md
 
-
-
-
                 # keep the calling parameters in a dictionary, and add the parameters from the client config
                 parameters = {'varname' : varname, 'datatype' : datatype, 'dimensions' : dimensions, 'zlib' : zlib,
                               'complevel' : complevel, 'shuffle' : shuffle, 'fletcher32' : fletcher32,
@@ -390,8 +350,6 @@ class slDataset(object):
                                                           self._file_details.cfa_file.cfa_vars[varname],
                                                           parameters)
                 return self._cfa_variables[varname]
-
-
 
     def close(self):
         """Close the netCDF file.  If it is a S3 file and the mode is write then upload to the storage."""
@@ -424,7 +382,7 @@ class slDataset(object):
 
     def update_cfa_meta(self,subfiles):
         # Update the attributes of the subfiles
-        # get glob attrs from master file
+        # get global attrs from master file
         changed_files = subfiles.copy()
 
         globattrs_list = self.ncattrs()  # this is a list, it needs to be a dict
@@ -491,13 +449,10 @@ class slDataset(object):
         """ Overloads the netcdf4 method which syncs to disk.
             Syncs the open dataset to disk and backend as required.
         """
-        # TODO update meta for cfa
 
         subfiles = self.get_subfiles_accessed()
 
-
         if not self._file_details.s3_uri == '':
-            #raise NotImplementedError('Sync/flush is not implemented for files in a backend. Call close() on the dataset inorder to sync.')
             # sync main file
             self.ncD.sync()
             self.sync_subfiles()
@@ -573,7 +528,6 @@ class slDataset(object):
 
     @property
     def path(self):
-
         return self.ncD.path
 
     def renameAttribute(self,oldname,newname):
@@ -668,7 +622,6 @@ class slDataset(object):
 
             self.close_subfiles(sfs)
             self.subfiles_accessed.extend(subfiles)
-            #self.upload_subfiles(subfiles)
 
     def renameGroup(self,oldname,newname):
         self.ncD.renameGroup(oldname,newname)
@@ -680,7 +633,6 @@ class slDataset(object):
                 sf.renameGroup(oldname,newname)
             self.close_subfiles(sfs)
             self.subfiles_accessed.extend(subfiles)
-            #self.upload_subfiles(subfiles)
 
     def rename_cfa_files(self, open_files, oldname, newname):
         # rename the cfa subfiles and update the cache DB
@@ -715,7 +667,6 @@ class slDataset(object):
             self.slC.remove_from_backend(subfiles)
 
             # Now upload the new files
-            #self.slC.bulk_upload(new_cfa_files)
             self.subfiles_accessed.extend(new_cfa_files)
 
     def set_auto_chartostring(self,True_or_False):
@@ -787,7 +738,6 @@ class slVariable(object):
 
     def upload_subfiles(self,file_list):
         # upload sub files in bulk, won't do anything if posix files are passed to it
-
         self.slC.bulk_upload(file_list)
 
     def check_whether_posix(self,file):
@@ -855,8 +805,6 @@ class slVariable(object):
             sfs.append(sf)
             svs.append(sf.variables[var])
 
-        #print('IN VAR RETURN VAR, POSIX FILES: {}'.format(posix_files))
-
         return svs, sfs, all_open_files
 
     @property
@@ -900,68 +848,33 @@ class slVariable(object):
         return self._nc_var.ncattrs()
 
     def setncattr(self, name, value):
-        # copy to the cfa_var
-        #self._cfa_var.metadata[name] = value
-        # copy to the netCDF var
-        #print('ENTERED VAR SETATTR')
         self._nc_var.setncattr(name, value)
         if self._cfa_file is not None:
             self._changed_attrs = True
-            # svs, sfs, open_files = self.return_subvars(self.name)
-            # # loop through variables
-            # for sv in svs:
-            #     sv.setncattr(name, value)
-            #     assert sv.getncattr(name) == value
-            # self.close_subfiles(sfs)
-            # self.upload_subfiles(open_files)
 
     def setncattr_string(self, name, value):
-        # copy to the cfa_var
-        #self._cfa_var.metadata[name] = value
-        # copy to the netCDF var
         self._nc_var.setncattr(name, value)
 
         if self._cfa_file is not None:
             self._changed_attrs = True
-            # svs, sfs, open_files = self.return_subvars(self.name)
-            # # loop through variables
-            # for sv in svs:
-            #     sv.setncattr(name, value)
-            # self.close_subfiles(sfs)
-            # self.upload_subfiles(open_files)
 
     def setncatts(self, attdict):
         # copy to the cfa_var
         self._cfa_var.metadata = attdict
         # copy to the netCDF var
         self._nc_var.setncatts(attdict)
-        #print('IN SET ATTS {}'.format(self._cfa_file))
 
         if self._cfa_file is not None:
             self._changed_attrs = True
-            # svs, sfs, open_files = self.return_subvars(self.name)
-            # # loop through variables
-            # for sv in svs:
-            #     sv.setncatts(attdict)
-            # self.close_subfiles(sfs)
-            # self.upload_subfiles(open_files)
 
     def getncattr(self, name, encoding='utf-8'):
         return self._nc_var.getncattr(name, encoding)
 
     def delncattr(self, name):
-        #print('IN VAR DELATTR {}'.format(self.ncattrs()))
         self._nc_var.delncattr(name)
 
         if self._cfa_file is not None:
             self._changed_attrs = True
-            # svs, sfs, open_files = self.return_subvars(self.name)
-            # # loop through variables
-            # for sv in svs:
-            #     #print('IN VAR DELATTR {}'.format(sv.ncattrs()))
-            #     sv.delncattr(name)
-            # self.close_subfiles(sfs)
-            # self.upload_subfiles(open_files)
 
     def filters(self):
         return self._nc_var.filters()
@@ -981,14 +894,6 @@ class slVariable(object):
     def __delattr__(self, name):
         self._nc_var.__delattr__(name)
 
-        # if self._cfa_file is not None:
-        #     svs, sfs, open_files = self.return_subvars(self.name)
-        #     # loop through variables
-        #     for sv in svs:
-        #         sv.__delattr__(name)
-        #     self.close_subfiles(sfs)
-        #     self.upload_subfiles(open_files)
-
     def __setattr__(self, name, value):
         if name in slVariable._private_atts:
             self.__dict__[name] = value
@@ -998,22 +903,6 @@ class slVariable(object):
             raise AttributeError("shape cannot be altered")
         else:
             self.setncattr(name,value)
-            #self._nc_var.__setattr__(name, value)
-
-        # if self._cfa_file is not None:
-        #     svs, sfs, open_files = self.return_subvars(self.name)
-        #     # loop through variables
-        #     for sv in svs:
-        #         if name in s3Variable._private_atts:
-        #             sv.__dict__[name] = value
-        #         elif name == "dimensions":
-        #             raise AttributeError("dimensions cannot be altered")
-        #         elif name == "shape":
-        #             raise AttributeError("shape cannot be altered")
-        #         else:
-        #             sv.__setattr__(name, value)
-        #     self.close_subfiles(sfs)
-        #     self.upload_subfiles(open_files)
 
     def __getattr__(self, name):
         # check whether it is _nc_var or _cfa_var
@@ -1051,12 +940,6 @@ class slVariable(object):
 
         if self._cfa_file is not None:
             self._changed_attrs = True
-            # svs, sfs, open_files = self.return_subvars(self.name)
-            # # loop through variables
-            # for sv in svs:
-            #     sv.renameAttribute(oldname, newname)
-            # self.close_subfiles(sfs)
-            # self.upload_subfiles(open_files)
 
     def __len__(self):
         return self._nc_var.__len__()

@@ -243,9 +243,7 @@ class slCacheManager(object):
                 self._upload_from_cache(fid)
                 # upload subfiles
                 for sf in subfiles_accessed:
-                    subfid = sf#slU._get_alias(fid)+'/'+slU._get_bucket(fid)+'/'+sf
-                    #self.DB.add_entry(subfid) removed because not needed?? TODO affirm
-                    self._upload_from_cache(subfid)
+                    self._upload_from_cache(sf)
 
 
         else:
