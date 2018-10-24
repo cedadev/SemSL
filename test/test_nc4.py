@@ -32,9 +32,9 @@ FNAME = './testfile.nc'
 VARNAME = 'var'
 DIMSIZE = 20
 
-class test_set1_ReadWrite(unittest.TestCase):
+class test_set0_ReadWrite(unittest.TestCase):
 
-    def test_1_posix_write(self):
+    def test_01_posix_write(self):
 
         self.f = Dataset('./testnc.nc','w')
         self.f.test = 'Created for SemSL tests'
@@ -63,7 +63,7 @@ class test_set1_ReadWrite(unittest.TestCase):
 
 
 
-    def test_4_s3_write(self):
+    def test_04_s3_write(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'w')
         self.f.test = 'Created for SemSL tests'
 
@@ -113,7 +113,7 @@ class test_set1_ReadWrite(unittest.TestCase):
         sl_cache = slCacheManager()
         sl_cache._clear_cache()
 
-    def test_2_read_posix(self):
+    def test_02_read_posix(self):
         self.f = Dataset('./testnc.nc', 'r')
 
         v = self.f.getVariable('var')
@@ -122,14 +122,14 @@ class test_set1_ReadWrite(unittest.TestCase):
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 
-    def test_5_read_s3(self):
+    def test_05_read_s3(self):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'r')
         v = self.f.getVariable('var')
         data = v[:]
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 
-    def test_3_remove_posix(self):
+    def test_03_remove_posix(self):
         os.remove('./testnc.nc')
         subfiles = glob('./testnc/*.nc')
         for f in subfiles:
@@ -139,7 +139,7 @@ class test_set1_ReadWrite(unittest.TestCase):
         sl_cache = slCacheManager()
         sl_cache._clear_cache()
 
-    def test_6_remove_s3(self):
+    def test_06_remove_s3(self):
         sl_cache = slCacheManager()
         sl_config = slConfig()
         slDB = slCacheDB()
@@ -155,7 +155,7 @@ class test_set1_ReadWrite(unittest.TestCase):
         s3.delete_object(Bucket='databucket',Key='testnc.nc')
         s3.delete_bucket(Bucket='databucket')
 
-    def test_7_write_none_cfa(self):
+    def test_07_write_none_cfa(self):
         self.f = Dataset('s3://minio/databucket/testnc_noncfa.nc', 'w', format='NETCDF4')
         self.f.test = 'Created for SemSL tests'
 
@@ -205,14 +205,14 @@ class test_set1_ReadWrite(unittest.TestCase):
         sl_cache = slCacheManager()
         sl_cache._clear_cache()
 
-    def test_8_read_none_cfa(self):
+    def test_08_read_none_cfa(self):
         self.f = Dataset('s3://minio/databucket/testnc_noncfa.nc', 'r')
         v = self.f.variables['var']
         data = v[:]
         self.assertTrue(data[0,0,0,0])
         self.f.close()
 
-    def test_9_remove_none_cfa(self):
+    def test_09_remove_none_cfa(self):
         sl_cache = slCacheManager()
         sl_config = slConfig()
         slDB = slCacheDB()
@@ -266,6 +266,111 @@ class test_set1_ReadWrite(unittest.TestCase):
 
         sl_cache = slCacheManager()
         sl_cache._clear_cache()
+
+class test_set1_variables(unittest.TestCase):
+    def test_multicfavar(self):
+        # Create test dataset
+        f = Dataset('./testnc_multivar.nc', 'w')
+        f.setncattr('test', 'Created for SemSL tests')
+
+        dim1 = f.createDimension('T', DIMSIZE)
+        dim1d = f.createVariable('T', 'i4', ('T',))
+        dim1d[:] = range(DIMSIZE)
+        dim2 = f.createDimension('Z', DIMSIZE)
+        dim2d = f.createVariable('Z', 'i4', ('Z',))
+        dim2d[:] = range(DIMSIZE)
+        dim3 = f.createDimension('Y', DIMSIZE)
+        dim3d = f.createVariable('Y', 'i4', ('Y',))
+        dim3d[:] = range(DIMSIZE)
+        dim4 = f.createDimension('X', DIMSIZE)
+        dim4d = f.createVariable('X', 'i4', ('X',))
+        dim4d[:] = range(DIMSIZE)
+        dim1d.axis = "T"
+        dim2d.axis = "Z"
+        dim3d.axis = "Y"
+        dim4d.axis = "X"
+        np.random.seed(0)
+        var = f.createVariable('var', 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
+        var[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+        var.setncattr('units', 'test unit')
+        var2 = f.createVariable('var2', 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
+        var2[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+        var2.setncattr('units', 'test unit')
+        f.close()
+
+        # Now remove the files
+        os.remove('./testnc_multivar.nc')
+        subfiles = glob('./testnc_multivar/*.nc')
+        # print('IN TEARDOWN {}'.format(subfiles))
+        for f in subfiles:
+            os.remove(f)
+        os.rmdir('./testnc_multivar')
+        self.assertFalse(os.path.exists('./testnc_multivar/'))
+
+
+    def test_changearrayvalues(self):
+        # create file in backend
+        self.f = Dataset('s3://minio/databucket/testnc_varchange.nc', 'w')
+        self.f.setncattr('test', 'Created for SemSL tests')
+
+        dim1 = self.f.createDimension('T', DIMSIZE)
+        dim1d = self.f.createVariable('T', 'i4', ('T',))
+        dim1d[:] = range(DIMSIZE)
+        dim2 = self.f.createDimension('Z', DIMSIZE)
+        dim2d = self.f.createVariable('Z', 'i4', ('Z',))
+        dim2d[:] = range(DIMSIZE)
+        dim3 = self.f.createDimension('Y', DIMSIZE)
+        dim3d = self.f.createVariable('Y', 'i4', ('Y',))
+        dim3d[:] = range(DIMSIZE)
+        dim4 = self.f.createDimension('X', DIMSIZE)
+        dim4d = self.f.createVariable('X', 'i4', ('X',))
+        dim4d[:] = range(DIMSIZE)
+        dim1d.axis = "T"
+        dim2d.axis = "Z"
+        dim3d.axis = "Y"
+        dim4d.axis = "X"
+        self.var = self.f.createVariable('var', 'f8', ('T', 'Z', 'Y', 'X'), contiguous=True)
+        self.var.setncattr('units', 'test unit')
+        self.var[:] = np.zeros((DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE))
+        self.f.close()
+
+        # remove the files in cache
+        sl_cache = slCacheManager()
+        sl_cache._clear_cache()
+
+        # Now reopen
+        f = Dataset('s3://minio/databucket/testnc_varchange.nc', 'a')
+        var = f.variables['var']
+        self.assertEqual(var[0,0,0,0], 0)
+
+        var[0,0,0,:] = np.ones((1,1,1,DIMSIZE))
+        self.assertEqual(var[0,0,0,0], 1)
+        f.close()
+
+        # remove the files in cache
+        sl_cache = slCacheManager()
+        sl_cache._clear_cache()
+
+        # now reopen again and check the change
+        f = Dataset('s3://minio/databucket/testnc_varchange.nc', 'r')
+        var = f.variables['var']
+        self.assertEqual(var[0, 0, 0, 0], 1)
+        f.close()
+
+        # cleanup
+        sl_config = slConfig()
+        slDB = slCacheDB()
+        conn_man = slConnectionManager(sl_config)
+        conn = conn_man.open("s3://minio")
+        sl_cache = slCacheManager()
+        sl_cache._clear_cache()
+        s3 = conn.get()
+        subfiles = s3.list_objects(Bucket='databucket', Prefix='testnc_varchange/')['Contents']
+        for sf in subfiles:
+            s3.delete_object(Bucket='databucket', Key=sf['Key'])
+        s3.delete_object(Bucket='databucket', Key='testnc_varchange.nc')
+        s3.delete_bucket(Bucket='databucket')
+
 
 class test_set3_Methods_posix_cfa(unittest.TestCase):
     def setUp(self):
@@ -2927,10 +3032,7 @@ Problems TODO
 Questions:
     
 Ideas for tests
-    - multi variables
-    - change part of an existing variable then upload to backend, download and check change has occurred i.e
-      create with zeros, close(), open dataset, change variable subsection to 1, close(), open dataset, check for 
-      changed area
+    
 """
 
 if __name__ == '__main__':

@@ -121,7 +121,9 @@ class slDataset(object):
                                                             self._file_details.cfa_file.cfa_vars[v],
                                                             {'cache_location' : self._sl_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
-                                                             'read_threads' : 1})
+                                                             'read_threads' : 1,
+                                                             'write_threads' : 1,
+                                                             'mode': mode})
                         #print(self.variables[v]._varid)
 
 
@@ -198,7 +200,10 @@ class slDataset(object):
                                                             self._file_details.cfa_file.cfa_vars[v],
                                                             {'cache_location' : self._sl_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
-                                                             'read_threads' : 1})
+                                                             'read_threads' : 1,
+                                                             'write_threads' : 1,
+                                                             'mode' : mode})
+                        # TODO change the read and write threads to get the information from the config
                         self.variables[v] = self._cfa_variables[v]
             else:
                 self._file_details.cfa_file = None

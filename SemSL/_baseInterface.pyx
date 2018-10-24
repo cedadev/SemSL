@@ -76,8 +76,11 @@ class _baseInterface(object):
             os.makedirs(os.path.dirname(part.subarray.file))
             file_details = slC.open(part.subarray.file, access_type=mode)
         # check if the file has already been created
-        if os.path.exists(part.subarray.file) and mode != 'w':
+        # This logic doesn't work if the files do not currently exist in cache
+        #if os.path.exists(part.subarray.file) and mode != 'w':
+        # instead only check the mode!
             # open the file in append mode
+        if not mode == 'w':
             ncfile = netCDF4.Dataset(file_details, mode=mode)
             var = ncfile.variables[self._nc_var.name]
         else:
@@ -125,7 +128,11 @@ class _baseInterface(object):
         # get the source and target slices - these are flipped in relation to __getitem__
         py_target_slice, py_source_slice = get_source_target_slices(part, elem_slices)
         # copy the data in
-        var[tuple(py_target_slice)] = self._data[tuple(py_source_slice)]
+        try:
+            var[tuple(py_target_slice)] = self._data[tuple(py_source_slice)]
+        except IndexError as e:
+            raise IndexError('{}\n\nIf trying to set the values in an array, the number of dimensions in the '
+                             'subarray must match the number of dimensions in the variable.'.format(e))
         ncfile.close()
         return part.subarray.file
 
