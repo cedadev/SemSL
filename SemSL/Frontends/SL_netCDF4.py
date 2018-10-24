@@ -107,8 +107,12 @@ class slDataset(object):
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
+                    read_threads = self._sl_config['hosts'][host_name]['read_connections']
+                    write_threads = self._sl_config['hosts'][host_name]['write_connections']
                 except ValueError:
                     obj_size = 0
+                    read_threads = 1
+                    write_threads = 1
                 # Parse the CFA metadata from this class' metadata
                 self._file_details.cfa_file = CFAFile()
                 self._file_details.cfa_file.parse(self)
@@ -121,8 +125,8 @@ class slDataset(object):
                                                             self._file_details.cfa_file.cfa_vars[v],
                                                             {'cache_location' : self._sl_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
-                                                             'read_threads' : 1,
-                                                             'write_threads' : 1,
+                                                             'read_threads' : read_threads,
+                                                             'write_threads' : write_threads,
                                                              'mode': mode})
                         #print(self.variables[v]._varid)
 
@@ -187,8 +191,13 @@ class slDataset(object):
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
+                    read_threads = self._sl_config['hosts'][host_name]['read_connections']
+                    write_threads = self._sl_config['hosts'][host_name]['write_connections']
                 except ValueError:
                     obj_size = 0
+                    read_threads = 1
+                    write_threads = 1
+
                 # Parse the CFA metadata from this class' metadata
                 self._file_details.cfa_file = CFAFile()
                 self._file_details.cfa_file.format = self._file_details.format
@@ -200,8 +209,8 @@ class slDataset(object):
                                                             self._file_details.cfa_file.cfa_vars[v],
                                                             {'cache_location' : self._sl_config['cache']['location'],
                                                              'max_object_size_for_memory' : obj_size,
-                                                             'read_threads' : 1,
-                                                             'write_threads' : 1,
+                                                             'read_threads' : read_threads,
+                                                             'write_threads' : write_threads,
                                                              'mode' : mode})
                         # TODO change the read and write threads to get the information from the config
                         self.variables[v] = self._cfa_variables[v]
@@ -302,9 +311,13 @@ class slDataset(object):
                 try:
                     host_name = slU._get_hostname(self._file_details.filename)
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
+                    read_threads = self._sl_config['hosts'][host_name]['read_connections']
+                    write_threads = self._sl_config['hosts'][host_name]['write_connections']
                 except ValueError:
                     obj_size = 0
                     obj_size = self._sl_config['system']['default_object_size']
+                    read_threads = 1
+                    write_threads = 1
 
                 # create the partitions, i.e. a list of CFAPartition, and get the partition shape
                 # get the max file size from the s3ClientConfig
@@ -368,7 +381,8 @@ class slDataset(object):
                               'fill_value' : fill_value, 'chunk_cache' : chunk_cache,
                               'cache_location' : self._sl_config['cache']['location'],
                               'max_object_size_for_memory' : obj_size,
-                              'write_threads' : 1,
+                              'write_threads' : write_threads,
+                              'read_threads' : read_threads,
                               'mode':self.mode}
 
                 # create the s3Variable which is a reimplementation of the netCDF4 variable
