@@ -284,6 +284,14 @@ class slDataset(object):
                 return var
             else:
                 # it is not so create a dimension free version
+                # We need to check that the dimension variables exist before we can create the variable which uses them
+                for d in dimensions:
+                    try:
+                        dvar = self.variables[d]
+                    except KeyError as e:
+                        raise ValueError('{}\n\nError: The dimension variables need to created before a '
+                                         'variable which relies on them.'.format(e))
+
 
                 # Get the host name in order to get the obj size, otherwise refer to default
                 try:
