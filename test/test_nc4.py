@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.7
-
 ''' This file tests the SemSL netcdf4 frontend.
 '''
 __copyright__ = "(C) 2012 Science and Technology Facilities Council"

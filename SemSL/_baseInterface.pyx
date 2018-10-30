@@ -91,6 +91,9 @@ class _baseInterface(object):
 
             # create the netCDF file
             ncfile = netCDF4.Dataset(file_details, mode, format=self._cfa_file.format)
+            # TODO
+            # create any required groups
+
             # create the dimensions
             for d in range(0, len(self._cfa_var.pmdimensions)):
                 # get the dimension details from the _cfa_var

@@ -700,6 +700,141 @@ class slDataset(object):
     def vltypes(self):
         return self.ncD.vltypes
 
+class slGroup(object):
+    """
+     Reimplement the netcdf4 group class to enable groups to be used with cfa files.
+
+     I think this should work the same way as the file object, except on create variable, where the sub file gets an
+     attribute to say which group it is in, for rebuilds?
+    """
+
+    def __init__(self):
+        pass
+
+    def createVariable(self):
+        pass
+
+    def close(self):
+        pass
+
+    def cmptypes(self):
+        pass
+
+    def createCompoundType(self):
+        pass
+
+    def createDimension(self):
+        pass
+
+    def createEnumType(self):
+        pass
+
+    def createGroup(self):
+        pass
+
+    def createVLType(self):
+        pass
+
+    def data_model(self):
+        pass
+
+    def delncattr(self):
+        pass
+
+    def dimensions(self):
+        pass
+
+    def disk_format(self):
+        pass
+
+    def enumtypes(self):
+        pass
+
+    def file_format(self):
+        pass
+
+    def filepath(self):
+        pass
+
+    def get_variables_by_attributes(self):
+        pass
+
+    def getncattr(self):
+        pass
+
+    def groups(self):
+        pass
+
+    def isopen(self):
+        pass
+
+    def keepweakref(self):
+        pass
+
+    def name(self):
+        pass
+
+    def ncattrs(self):
+        pass
+
+    def parent(self):
+        pass
+
+    def path(self):
+        pass
+
+    def renameAttribute(self):
+        pass
+
+    def renameDimension(self):
+        pass
+
+    def renameGroup(self):
+        pass
+
+    def renameVariable(self):
+        pass
+
+    def set_always_mask(self):
+        pass
+
+    def set_auto_chartostring(self):
+        pass
+
+    def set_auto_mask(self):
+        pass
+
+    def set_auto_maskandscale(self):
+        pass
+
+    def set_auto_scale(self):
+        pass
+
+    def set_fill_off(self):
+        pass
+
+    def set_fill_on(self):
+        pass
+
+    def setncattr(self):
+        pass
+
+    def setncattr_string(self):
+        pass
+
+    def setncatts(self):
+        pass
+
+    def sync(self):
+        pass
+
+    def variables(self):
+        pass
+
+    def vltypes(self):
+        pass
+
+
 class slVariable(object):
     """
       Reimplement the UniData netCDF4 Variable class and override some key methods so as to enable CFA and S3 functionality
@@ -1012,7 +1147,7 @@ class slVariable(object):
         # get the filled slices
         elem_slices = fill_slices(self.shape, elem)
         # get the partitions from the slice - created the subset of partitions
-        subset_parts = []
+        subset_parts = deque()
         # determine which partitions overlap with the indices
         for p in self._cfa_var.partitions:
             if partition_overlaps(p, elem_slices):
