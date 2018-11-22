@@ -708,8 +708,11 @@ class slGroup(object):
      attribute to say which group it is in, for rebuilds?
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, parent, name):
+        self.parent = parent
+        self.name = name
+
+
 
     def createVariable(self):
         pass
