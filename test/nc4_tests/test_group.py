@@ -33,7 +33,7 @@ DIMSIZE = 20
 class test_groups_posix_noncfa(unittest.TestCase):
     def setUp(self):
         # Create test dataset
-        f = Dataset('./testnc_methods.nc', 'w')
+        f = Dataset('./testnc_group.nc', 'w',format='NETCDF4')
         f.setncattr('test', 'Created for SemSL tests')
 
         dim1 = f.createDimension('T', DIMSIZE)
@@ -56,9 +56,91 @@ class test_groups_posix_noncfa(unittest.TestCase):
 
     def tearDown(self):
         # remove test file
-        os.remove('./testnc_methods.nc')
+        os.remove('./testnc_group.nc')
 
-    def test_onegroup
+    def test_onegroup(self):
+        f = Dataset('./testnc_group.nc', 'a', format='NETCDF4')
+        # create group
+        g = f.createGroup('testgroup')
+
+        v = g.createVariable('var','f8',('T','Z','Y','X',))
+        v[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
+
+        f.close()
+
+    def test_twogroup(self):
+        f = Dataset('./testnc_group.nc', 'a', format='NETCDF4')
+        # create group
+        g = f.createGroup('testgroup')
+
+        v = g.createVariable('var', 'f8', ('T', 'Z', 'Y', 'X',))
+        v[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+
+        g2 = f.createGroup('testgroup2')
+
+        v2 = g2.createVariable('var', 'f8', ('T', 'Z', 'Y', 'X',))
+        v2[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+
+        f.close()
+
+class test_groups_posix_cfa(unittest.TestCase):
+    def setUp(self):
+        # Create test dataset
+        f = Dataset('./testnc_group.nc', 'w')
+        f.setncattr('test', 'Created for SemSL tests')
+
+        dim1 = f.createDimension('T', DIMSIZE)
+        dim1d = f.createVariable('T', 'i4', ('T',))
+        dim1d[:] = range(DIMSIZE)
+        dim2 = f.createDimension('Z', DIMSIZE)
+        dim2d = f.createVariable('Z', 'i4', ('Z',))
+        dim2d[:] = range(DIMSIZE)
+        dim3 = f.createDimension('Y', DIMSIZE)
+        dim3d = f.createVariable('Y', 'i4', ('Y',))
+        dim3d[:] = range(DIMSIZE)
+        dim4 = f.createDimension('X', DIMSIZE)
+        dim4d = f.createVariable('X', 'i4', ('X',))
+        dim4d[:] = range(DIMSIZE)
+        dim1d.axis = "T"
+        dim2d.axis = "Z"
+        dim3d.axis = "Y"
+        dim4d.axis = "X"
+        f.close()
+
+    def tearDown(self):
+        # remove test file
+        os.remove('./testnc_group.nc')
+        subfiles = glob('./testnc_group/*.nc')
+        # print('IN TEARDOWN {}'.format(subfiles))
+        for f in subfiles:
+            os.remove(f)
+        os.rmdir('./testnc_group')
+        self.assertFalse(os.path.exists('./testnc_group/'))
+
+    def test_onegroup(self):
+        f = Dataset('./testnc_group.nc', 'a', format='NETCDF4')
+        # create group
+        g = f.createGroup('testgroup')
+
+        v = g.createVariable('var','f8',('T','Z','Y','X',))
+        v[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
+
+        f.close()
+
+    def test_twogroup(self):
+        f = Dataset('./testnc_group.nc', 'a', format='NETCDF4')
+        # create group
+        g = f.createGroup('testgroup')
+
+        v = g.createVariable('var','f8',('T','Z','Y','X',))
+        v[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
+
+        g2 = f.createGroup('testgroup2')
+
+        v2 = g2.createVariable('var', 'f8', ('T', 'Z', 'Y', 'X',))
+        v2[:] = np.random.rand(DIMSIZE, DIMSIZE, DIMSIZE, DIMSIZE)
+
+        f.close()
 
 if __name__ == '__main__':
     unittest.main()

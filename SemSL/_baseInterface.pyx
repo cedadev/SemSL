@@ -69,7 +69,7 @@ class _baseInterface(object):
         # get the filename, either in the cache for s3 files or on disk for POSIX
         #file_details = get_netCDF_file_details(part.subarray.file, 'w')
         slC = slCache()
-        #print('TEST PRINT: SUBARRAY NAME {}'.format(part.subarray.file))
+
         try:
             file_details = slC.open(part.subarray.file, access_type=mode)
         except ValueError:
@@ -80,9 +80,10 @@ class _baseInterface(object):
         #if os.path.exists(part.subarray.file) and mode != 'w':
         # instead only check the mode!
             # open the file in append mode
-        if not mode == 'w':
-            ncfile = netCDF4.Dataset(file_details, mode=mode)
-            var = ncfile.variables[self._nc_var.name]
+        if mode == 'r':
+            raise ValueError('Error: Can not change values in variable in read mode.')
+            # ncfile = netCDF4.Dataset(file_details, mode=mode)
+            # var = ncfile.variables[self._nc_var.name]
         else:
             # first create the destination directory, if it doesn't exist
             dest_dir = os.path.dirname(file_details)
@@ -91,8 +92,10 @@ class _baseInterface(object):
 
             # create the netCDF file
             ncfile = netCDF4.Dataset(file_details, mode, format=self._cfa_file.format)
-            # TODO
+
             # create any required groups
+            if self._nc_var.group().path != '/':
+                group = ncfile.createGroup(self._nc_var.group().path.replace('/',''))
 
             # create the dimensions
             for d in range(0, len(self._cfa_var.pmdimensions)):
@@ -116,12 +119,20 @@ class _baseInterface(object):
                 dim_var[:] = cfa_dim.values[part.location[d,0]:part.location[d,1]+1]
 
             # create the variable - match the parameters to those used in the createVariable function in s3Dataset
-            var = ncfile.createVariable(self._nc_var.name, self._nc_var.datatype, self._cfa_var.pmdimensions,
-                                        zlib = ip['zlib'], complevel = ip['complevel'], shuffle = ip['shuffle'],
-                                        fletcher32 = ip['fletcher32'], contiguous = ip['contiguous'],
-                                        chunksizes = ip['chunksizes'], endian = ip['endian'],
-                                        least_significant_digit = ip['least_significant_digit'],
-                                        fill_value = ip['fill_value'], chunk_cache = ip['chunk_cache'])
+            if self._nc_var.group().path != '/':
+                var = group.createVariable(self._nc_var.name, self._nc_var.datatype, self._cfa_var.pmdimensions,
+                                            zlib = ip['zlib'], complevel = ip['complevel'], shuffle = ip['shuffle'],
+                                            fletcher32 = ip['fletcher32'], contiguous = ip['contiguous'],
+                                            chunksizes = ip['chunksizes'], endian = ip['endian'],
+                                            least_significant_digit = ip['least_significant_digit'],
+                                            fill_value = ip['fill_value'], chunk_cache = ip['chunk_cache'])
+            else:
+                var = ncfile.createVariable(self._nc_var.name, self._nc_var.datatype, self._cfa_var.pmdimensions,
+                                            zlib = ip['zlib'], complevel = ip['complevel'], shuffle = ip['shuffle'],
+                                            fletcher32 = ip['fletcher32'], contiguous = ip['contiguous'],
+                                            chunksizes = ip['chunksizes'], endian = ip['endian'],
+                                            least_significant_digit = ip['least_significant_digit'],
+                                            fill_value = ip['fill_value'], chunk_cache = ip['chunk_cache'])
             # add the variable cfa_metadata
             if self._cfa_var.metadata:
                 var.setncatts(self._cfa_var.metadata)
@@ -191,7 +202,11 @@ class _baseInterface(object):
         # write all the paritions (serially)
         partitions_accessed = []
         for part in partitions:
-            p = self._write_partition(part, elem_slices,self._init_params['mode'])
+            # need to check on append mode whether the subfiles exist, if they don't, overwrite append mode with 'w'
+            if self._init_params['mode'] == 'a' and not os.path.exists(part.subarray.file):
+                p = self._write_partition(part, elem_slices,'w')
+            else:
+                p = self._write_partition(part, elem_slices,self._init_params['mode'])
             partitions_accessed.append(p)
 
         return partitions_accessed

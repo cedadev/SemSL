@@ -30,7 +30,35 @@ FNAME = './testfile.nc'
 VARNAME = 'var'
 DIMSIZE = 20
 
+class test_groups_posix_noncfa(unittest.TestCase):
+    def setUp(self):
+        # Create test dataset
+        f = Dataset('./testnc_methods.nc', 'w')
+        f.setncattr('test', 'Created for SemSL tests')
 
+        dim1 = f.createDimension('T', DIMSIZE)
+        dim1d = f.createVariable('T', 'i4', ('T',))
+        dim1d[:] = range(DIMSIZE)
+        dim2 = f.createDimension('Z', DIMSIZE)
+        dim2d = f.createVariable('Z', 'i4', ('Z',))
+        dim2d[:] = range(DIMSIZE)
+        dim3 = f.createDimension('Y', DIMSIZE)
+        dim3d = f.createVariable('Y', 'i4', ('Y',))
+        dim3d[:] = range(DIMSIZE)
+        dim4 = f.createDimension('X', DIMSIZE)
+        dim4d = f.createVariable('X', 'i4', ('X',))
+        dim4d[:] = range(DIMSIZE)
+        dim1d.axis = "T"
+        dim2d.axis = "Z"
+        dim3d.axis = "Y"
+        dim4d.axis = "X"
+        f.close()
+
+    def tearDown(self):
+        # remove test file
+        os.remove('./testnc_methods.nc')
+
+    # methods list to follow
 
 if __name__ == '__main__':
     unittest.main()

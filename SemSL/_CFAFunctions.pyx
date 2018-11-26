@@ -254,11 +254,15 @@ def _build_list_of_indices(n_subarrays, pmshape, subarray_shape, var_shape):
 def create_partitions(base_filepath, dataset, dimensions,
                       varname, var_shape, dtype,
                       max_file_size=DEFAULT_OBJECT_SIZE,
-                      format="NETCDF4"):
+                      format="NETCDF4", group=None):
     """Create the CFAPartition(s) from the input data."""
     # get the axis types for the dimensions
-    subarray_shape = _calculate_subarray_shape(dataset, dimensions, var_shape,
-                                               dtype, max_file_size)
+    try:
+        subarray_shape = _calculate_subarray_shape(dataset, dimensions, var_shape,
+                                                dtype, max_file_size)
+    except KeyError as e:
+        subarray_shape = _calculate_subarray_shape(dataset,dataset.dimensions, var_shape,
+                                                dtype, max_file_size)
     # calculate the pmshape = var_shape / subarray_shape
     pmshape = numpy.array(var_shape) / subarray_shape
 
@@ -278,7 +282,10 @@ def create_partitions(base_filepath, dataset, dimensions,
         # output shape is just the difference between the location indices
         out_shape = location[sa,:,1] - location[sa,:,0]
         # get the sub file name
-        sub_filename = base_filepath + "/" + base_filename + "_" + varname + "_[" + str(sa) + "].nc"
+        if group:
+            sub_filename = base_filepath + "/" + base_filename + "_" + group + "_" +varname + "_[" + str(sa) + "].nc"
+        else:
+            sub_filename = base_filepath + "/" + base_filename + "_" + varname + "_[" + str(sa) + "].nc"
         cfa_subarray = CFASubarray(varname, sub_filename, format, out_shape)
         # create the output location
         out_location = numpy.array(location[sa])

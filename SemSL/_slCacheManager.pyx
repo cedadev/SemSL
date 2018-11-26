@@ -180,7 +180,6 @@ class slCacheManager(object):
         self.fid = fid
         self.diskless=diskless
 
-        print('IN CACHE OPEN fid: {}'.format(fid))
         # Check if the file path is probably just a posix path -- then just return the same path
         if self._check_whether_posix(fid,access_type) == 'Alias exists':
             pass
