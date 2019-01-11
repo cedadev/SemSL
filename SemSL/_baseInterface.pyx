@@ -65,7 +65,6 @@ class _baseInterface(object):
         """Write a single partition.  This should be used by subclasses."""
         ip = self._init_params # just a shorthand
 
-
         # get the filename, either in the cache for s3 files or on disk for POSIX
         #file_details = get_netCDF_file_details(part.subarray.file, 'w')
         slC = slCache()
@@ -84,7 +83,11 @@ class _baseInterface(object):
             raise ValueError('Error: Can not change values in variable in read mode.')
             # ncfile = netCDF4.Dataset(file_details, mode=mode)
             # var = ncfile.variables[self._nc_var.name]
-        else:
+        elif mode == 'a' or mode == 'r+':
+            ncfile = netCDF4.Dataset(file_details, mode=mode)
+            var = ncfile.variables[self._nc_var.name]
+
+        elif mode =='w':
             # first create the destination directory, if it doesn't exist
             dest_dir = os.path.dirname(file_details)
             if not os.path.isdir(dest_dir):
@@ -106,17 +109,45 @@ class _baseInterface(object):
                 # the dimension lengths come from the subarray
                 dim_size = part.subarray.shape[d]
                 # create the dimension
-                if cfa_dim.dim_len == -1:       # allow for unlimited dimension
-                    ncfile.createDimension(cfa_dim.dim_name, None)
-                else:
-                    ncfile.createDimension(cfa_dim.dim_name, dim_size)
+                # Check whether the dimension is part of the rootgroup or the group
+                if self._nc_var.group().path != '/':
+                    if dim_name in ip['nc_parent'].dimensions:
+                        if cfa_dim.dim_len == -1:       # allow for unlimited dimension
+                            ncfile.createDimension(cfa_dim.dim_name, None)
+                        else:
+                            ncfile.createDimension(cfa_dim.dim_name, dim_size)
 
-                # create the dimension variable
-                dim_var = ncfile.createVariable(cfa_dim.dim_name, cfa_dim.values.dtype, (cfa_dim.dim_name,))
-                # add the metadata as attributes
-                dim_var.setncatts(cfa_dim.metadata)
-                # add the values for the dimension - we need to build the indices
-                dim_var[:] = cfa_dim.values[part.location[d,0]:part.location[d,1]+1]
+                        # create the dimension variable
+                        dim_var = ncfile.createVariable(cfa_dim.dim_name, cfa_dim.values.dtype, (cfa_dim.dim_name,))
+                        # add the metadata as attributes
+                        dim_var.setncatts(cfa_dim.metadata)
+                        # add the values for the dimension - we need to build the indices
+                        dim_var[:] = cfa_dim.values[part.location[d,0]:part.location[d,1]+1]
+
+                    else:
+                        if cfa_dim.dim_len == -1:       # allow for unlimited dimension
+                            group.createDimension(cfa_dim.dim_name, None)
+                        else:
+                            group.createDimension(cfa_dim.dim_name, dim_size)
+
+                        # create the dimension variable
+                        dim_var = group.createVariable(cfa_dim.dim_name, cfa_dim.values.dtype, (cfa_dim.dim_name,))
+                        # add the metadata as attributes
+                        dim_var.setncatts(cfa_dim.metadata)
+                        # add the values for the dimension - we need to build the indices
+                        dim_var[:] = cfa_dim.values[part.location[d,0]:part.location[d,1]+1]
+                else:
+                    if cfa_dim.dim_len == -1:       # allow for unlimited dimension
+                        ncfile.createDimension(cfa_dim.dim_name, None)
+                    else:
+                        ncfile.createDimension(cfa_dim.dim_name, dim_size)
+
+                    # create the dimension variable
+                    dim_var = ncfile.createVariable(cfa_dim.dim_name, cfa_dim.values.dtype, (cfa_dim.dim_name,))
+                    # add the metadata as attributes
+                    dim_var.setncatts(cfa_dim.metadata)
+                    # add the values for the dimension - we need to build the indices
+                    dim_var[:] = cfa_dim.values[part.location[d,0]:part.location[d,1]+1]
 
             # create the variable - match the parameters to those used in the createVariable function in s3Dataset
             if self._nc_var.group().path != '/':
@@ -136,6 +167,17 @@ class _baseInterface(object):
             # add the variable cfa_metadata
             if self._cfa_var.metadata:
                 var.setncatts(self._cfa_var.metadata)
+            # add group metadata if necessary
+            if not type(self._group) == netCDF4.Dataset:
+                # create dict of group attrs
+                gattr = {}
+                for at in self._group.ncattrs():
+                    gattr[at] = self._cfa_file.groups[self._group.name].getncattr(at)
+                group.setncatts(gattr)
+
+        else:
+            raise ValueError('Invalid file access mode in partition access.')
+
 
         # now copy the data in.  We have to decide where to copy this fragment of the data to (target)
         # and from where in the original data we want to copy it (source)
@@ -162,7 +204,7 @@ class _baseInterface(object):
         self._read_threads = read_threads
 
 
-    def set_write_params(self, data, nc_var, cfa_var, cfa_file, write_threads, init_params):
+    def set_write_params(self, data, nc_var, cfa_var, cfa_file, write_threads, init_params, group={'name':'root group'}):
         """Set the required input parameters to successfully write the CFA files"""
         self._data = data
         self._nc_var = nc_var
@@ -170,6 +212,7 @@ class _baseInterface(object):
         self._cfa_file = cfa_file
         self._write_threads = write_threads
         self._init_params = init_params
+        self._group = group
 
 
     def set_upload_params(self, file_details, cfa_variables, upload_threads):
@@ -198,12 +241,13 @@ class _baseInterface(object):
 
     def write(self, partitions, elem_slices):
         """Write (in serial) the list of partitions which are in the subgroup determined by S3Variable.__setitem__"""
-
+        slC = slCache()
         # write all the paritions (serially)
         partitions_accessed = []
         for part in partitions:
             # need to check on append mode whether the subfiles exist, if they don't, overwrite append mode with 'w'
-            if self._init_params['mode'] == 'a' and not os.path.exists(part.subarray.file):
+            # Cache open needed to get the cache path for checking if the file exists for appends
+            if self._init_params['mode'] == 'a' and not os.path.exists(slC.open(part.subarray.file,self._init_params['mode'])):
                 p = self._write_partition(part, elem_slices,'w')
             else:
                 p = self._write_partition(part, elem_slices,self._init_params['mode'])

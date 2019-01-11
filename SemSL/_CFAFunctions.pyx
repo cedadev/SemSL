@@ -254,7 +254,7 @@ def _build_list_of_indices(n_subarrays, pmshape, subarray_shape, var_shape):
 def create_partitions(base_filepath, dataset, dimensions,
                       varname, var_shape, dtype,
                       max_file_size=DEFAULT_OBJECT_SIZE,
-                      format="NETCDF4", group=None):
+                      format="NETCDF4", group=None, parent=None):
     """Create the CFAPartition(s) from the input data."""
     # get the axis types for the dimensions
     try:
