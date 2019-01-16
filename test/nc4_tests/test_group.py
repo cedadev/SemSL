@@ -123,6 +123,7 @@ class test_groups_posix_cfa(unittest.TestCase):
         g = f.createGroup('testgroup')
 
         v = g.createVariable('var','f8',('T','Z','Y','X',))
+        # TODO I think this throws an error because it can't find the dimensions that belong to the rootgroup
         v[:] = np.random.rand(DIMSIZE,DIMSIZE,DIMSIZE,DIMSIZE)
 
         f.close()

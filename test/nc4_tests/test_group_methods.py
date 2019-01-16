@@ -435,11 +435,27 @@ class test_groups_posix_cfa(unittest.TestCase):
     # def test_createVLType(self):
     #     pass
 
+    def test_single_dimension_variable(self):
+        f = Dataset('./testnc_methods.nc', 'a')
+        g = f.createGroup('testgroup')
+        g.setncattr('testattr', 'testattrval')
+        test_pass = False
+        try:
+            v = g.createVariable('var', 'f8', ('T'))
+            test_pass = True
+
+        except AttributeError:
+            pass
+
+        self.assertTrue(test_pass)
+        v[:] = np.zeros(20)
+        f.close()
+
     def test_data_model(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var','f8',('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual(g.data_model,'NETCDF4')
         f.close()
         f = Dataset('./testnc_methods/testnc_methods_testgroup_var_[0].nc', 'r')
@@ -451,8 +467,8 @@ class test_groups_posix_cfa(unittest.TestCase):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
         g.setncattr('testattr','testattrval')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         f.close()
 
         f = Dataset('./testnc_methods.nc', 'a')
@@ -474,8 +490,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_dimensions(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.createDimension('extradim', 10)
         for i,j in zip(g.dimensions.keys(),['extradim']):
             self.assertEqual(i,j)
@@ -485,8 +501,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_disk_format(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var','f8',('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual(g.disk_format, None)
         f.close()
 
@@ -496,33 +512,33 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_file_format(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var','f8',('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual(g.file_format,'NETCDF4')
         f.close()
 
     def test_filepath(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual(g.filepath(), './testnc_methods.nc')
         f.close()
 
     def test_get_variables_by_attributes(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('testgroupvar', 'f8',('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('testgroupvar', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         v.testattr = 'val'
-        v2 = g.createVariable('testgroupvar2', 'f8',('T'))
-        v2[:] = np.zeros(20)
+        v2 = g.createVariable('testgroupvar2', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         v2.testattr = 'val'
-        v3 = g.createVariable('tesgroupvar3', 'f8',('T'))
-        v3[:] = np.zeros(20)
+        v3 = g.createVariable('tesgroupvar3', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         sg = g.createGroup('nestedgroup')
-        sv = sg.createVariable('nestedgroupvar', 'f8',('T'))
-        sv[:] = np.zeros(20)
+        sv = sg.createVariable('nestedgroupvar', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         sv.testattr = 'val'
 
         varlist = [x.name for x in g.get_variables_by_attributes(testattr='val')]
@@ -535,8 +551,8 @@ class test_groups_posix_cfa(unittest.TestCase):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
         g.setncattr('testattr','val')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         f.close()
 
         f = Dataset('./testnc_methods.nc', 'r')
@@ -547,8 +563,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_groups(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         sg = g.createGroup('nestedgroup')
         self.assertEqual([x for x in g.groups], ['nestedgroup'])
         f.close()
@@ -556,8 +572,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_isopen(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertFalse(g.isopen())
         f.close()
         self.assertFalse(g.isopen())
@@ -568,16 +584,16 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_name(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual(g.name, 'testgroup')
         f.close()
 
     def test_ncattrs(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.setncattr('testattr', 'val')
         g.setncattr('testattr2', 'val2')
         self.assertEqual(g.ncattrs(),['testattr','testattr2'])
@@ -594,16 +610,16 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_path(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual(g.path, '/testgroup')
         f.close()
 
     def test_renameAttribute(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.setncattr('testattr', 'val')
         g.setncattr('testattr2', 'val2')
         self.assertEqual(g.ncattrs(), ['testattr', 'testattr2'])
@@ -617,8 +633,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_renameDimension(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.createDimension('testdim',50)
         self.assertEqual([x for x in g.dimensions.keys()],['testdim'])
         g.renameDimension('testdim','renameddim')
@@ -628,8 +644,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_renameGroup(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         gg = g.createGroup('subgroup')
         self.assertEqual([x for x in g.groups.keys()],['subgroup'])
         g.renameGroup('subgroup','renamedgroup')
@@ -639,8 +655,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_renameVariable(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var','f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual([x for x in g.variables.keys()], ['var'])
         g.renameVariable('var','renamedvar')
         self.assertEqual([x for x in g.variables.keys()], ['renamedvar'])
@@ -677,8 +693,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_setncattr(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var','f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.setncattr('testattr','val')
         self.assertEqual(g.ncattrs(),['testattr'])
         f.close()
@@ -686,8 +702,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_setncattr_string(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.setncattr('testattr', 'val')
         self.assertEqual(g.ncattrs(), ['testattr'])
         f.close()
@@ -695,8 +711,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_setncatts(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         g.setncatts({'testattr':'val','at2':'val2'})
         self.assertEqual(g.ncattrs(), ['testattr','at2'])
         f.close()
@@ -712,8 +728,8 @@ class test_groups_posix_cfa(unittest.TestCase):
     def test_variables(self):
         f = Dataset('./testnc_methods.nc', 'a')
         g = f.createGroup('testgroup')
-        v = g.createVariable('var', 'f8', ('T'))
-        v[:] = np.zeros(20)
+        v = g.createVariable('var', 'f8',('T','Y','X'))
+        v[:] = np.zeros((20,20,20))
         self.assertEqual([x for x in g.variables.keys()], ['var'])
         f.close()
 

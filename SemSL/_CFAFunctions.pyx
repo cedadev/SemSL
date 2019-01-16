@@ -135,6 +135,7 @@ def _get_field_operations(c_subarray_divs, axis_types):
 def _subdivide_array(var_shape, c_subarray_divs, axis_types, permitted_axes=["T"]):
     # calculate the number of elements per sub for the linear axis types
     n_per_subf = numpy.zeros((len(var_shape),),'i')
+    print(axis_types)
     for i in range(0, len(var_shape)):
         if axis_types[i] not in permitted_axes:
             n_per_subf[i] = int(1e6)
@@ -261,7 +262,7 @@ def create_partitions(base_filepath, dataset, dimensions,
         subarray_shape = _calculate_subarray_shape(dataset, dimensions, var_shape,
                                                 dtype, max_file_size)
     except KeyError as e:
-        subarray_shape = _calculate_subarray_shape(dataset,dataset.dimensions, var_shape,
+        subarray_shape = _calculate_subarray_shape(parent,dimensions, var_shape,
                                                 dtype, max_file_size)
     # calculate the pmshape = var_shape / subarray_shape
     pmshape = numpy.array(var_shape) / subarray_shape

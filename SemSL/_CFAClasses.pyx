@@ -67,15 +67,17 @@ cdef class CFAFile:
     cdef public dict cfa_dims
     cdef public dict cfa_metadata
     cdef public dict cfa_vars
+    cdef public dict groups
     cdef public basestring format
 
     def __init__(self, cfa_dims = {},
                  cfa_metadata = {}, cfa_vars = {},
-                 format="NETCDF4"):
+                 format="NETCDF4", groups = {}):
         """Initialise the CFAFile class"""
         self.cfa_dims = dict(cfa_dims)
         self.cfa_metadata = dict(cfa_metadata)
         self.cfa_vars = dict(cfa_vars)
+        self.groups = dict(groups)
         self.format = format
 
 
