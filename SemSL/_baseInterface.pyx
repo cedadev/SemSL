@@ -167,6 +167,11 @@ class _baseInterface(object):
             # add the variable cfa_metadata
             if self._cfa_var.metadata:
                 var.setncatts(self._cfa_var.metadata)
+            #TODO get attrbute percolation working working
+            # vattr = {}
+            # for at in self._nc_var.ncattrs():
+            #     vattr[at] = self._cfa_file.variables[self._nc_var.name].getncattr(at)
+            # var.setncatts(vattr)
             # add group metadata if necessary
             if not type(self._group) == netCDF4.Dataset:
                 # create dict of group attrs
@@ -175,6 +180,11 @@ class _baseInterface(object):
                     gattr[at] = self._cfa_file.groups[self._group.name].getncattr(at)
                 group.setncatts(gattr)
 
+            # Need too add attributes not directly related to a variable
+            # fattr = {}
+            # for at in self.p.ncattrs(self.):
+            #     gattr[at] = self._cfa_file.groups[self._group.name].getncattr(at)
+            # group.setncatts(gattr)
         else:
             raise ValueError('Invalid file access mode in partition access.')
 

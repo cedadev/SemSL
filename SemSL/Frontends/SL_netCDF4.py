@@ -809,7 +809,7 @@ class slGroup(object):
 
                 # create the partitions, i.e. a list of CFAPartition, and get the partition shape
                 # get the max file size from the s3ClientConfig
-                print(dimensions)
+
                 base_filename = self._file_details.filename.replace('.nc', '')
                 pmshape, partitions, subarrayshape = create_partitions(base_filename, self._group, dimensions,
                                                                        varname, var_shape,

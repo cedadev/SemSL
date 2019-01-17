@@ -26,7 +26,7 @@ def _num_vals(shape):
     return reduce(operator.mul, shape)
 
 
-def _get_axis_types(dataset, dimensions):
+def _get_axis_types(dataset, dimensions, parent):
     """Get the axis types for the variable.
         These can be T, Z, Y, X, N:
                      T - time - (axis="T", name="t??" or name contains "time")
@@ -39,7 +39,10 @@ def _get_axis_types(dataset, dimensions):
     # loop over the dimensions
     for d in dimensions:
         # dimension variables have the same name as the dimensions
-        dim = dataset.variables[d]
+        try:
+            dim = dataset.variables[d]
+        except KeyError:
+            dim = parent.variables[d]
         # see if there is an axis attribute
         if "axis" in dim.ncattrs():
             # there is so just add to the axis
@@ -135,7 +138,6 @@ def _get_field_operations(c_subarray_divs, axis_types):
 def _subdivide_array(var_shape, c_subarray_divs, axis_types, permitted_axes=["T"]):
     # calculate the number of elements per sub for the linear axis types
     n_per_subf = numpy.zeros((len(var_shape),),'i')
-    print(axis_types)
     for i in range(0, len(var_shape)):
         if axis_types[i] not in permitted_axes:
             n_per_subf[i] = int(1e6)
@@ -151,7 +153,7 @@ def _subdivide_array(var_shape, c_subarray_divs, axis_types, permitted_axes=["T"
 
 
 def _calculate_subarray_shape(dataset, dimensions, var_shape, dtype,
-                              max_file_size=DEFAULT_OBJECT_SIZE): # 2MB default object size
+                              max_file_size=DEFAULT_OBJECT_SIZE, parent=None): # 2MB default object size
     """
     Return a 'good shape' for the sub-arrays for an any-D variable,
     assuming balanced 1D/(n-1)D access
@@ -190,7 +192,7 @@ def _calculate_subarray_shape(dataset, dimensions, var_shape, dtype,
     # calculate the maximum number of fields = max_file_size / size of dtype of data
     max_field_size = max_file_size / dtype.itemsize
     # get the axis_types
-    axis_types = _get_axis_types(dataset, dimensions)
+    axis_types = _get_axis_types(dataset, dimensions, parent)
     # the algorithm first calculates how many partitions each dimension should be split into
     # this is stored in c_subfield_divs
     # current subfield_repeats shape defaults to var shape
@@ -258,12 +260,12 @@ def create_partitions(base_filepath, dataset, dimensions,
                       format="NETCDF4", group=None, parent=None):
     """Create the CFAPartition(s) from the input data."""
     # get the axis types for the dimensions
-    try:
-        subarray_shape = _calculate_subarray_shape(dataset, dimensions, var_shape,
-                                                dtype, max_file_size)
-    except KeyError as e:
-        subarray_shape = _calculate_subarray_shape(parent,dimensions, var_shape,
-                                                dtype, max_file_size)
+    #try:
+    subarray_shape = _calculate_subarray_shape(dataset, dimensions, var_shape,
+                                            dtype, max_file_size, parent=parent)
+    #except KeyError as e:
+    #    subarray_shape = _calculate_subarray_shape(parent,dimensions, var_shape,
+    #                                            dtype, max_file_size)
     # calculate the pmshape = var_shape / subarray_shape
     pmshape = numpy.array(var_shape) / subarray_shape
 
