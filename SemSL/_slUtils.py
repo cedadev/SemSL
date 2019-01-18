@@ -17,10 +17,11 @@ def _get_alias(fid):
         aliases.append(sl_config['hosts'][host_name]['alias'])
 
     for alias in aliases:
+
         if alias in fid:
             return alias
-        else: # return None if alias isn't found in list
-            return None
+    # return None if alias isn't found in list
+    return None
 
 def _get_hostname(fid):
 
