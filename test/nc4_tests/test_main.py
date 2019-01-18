@@ -65,6 +65,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         self.f = Dataset('s3://minio/databucket/testnc.nc', 'w')
         self.f.test = 'Created for SemSL tests'
 
+        sl_config = slConfig()
         dim1 = self.f.createDimension('T', DIMSIZE)
         dim1d = self.f.createVariable('T', 'i4', ('T',))
         dim1d[:] = range(DIMSIZE)
@@ -89,8 +90,9 @@ class test_set0_ReadWrite(unittest.TestCase):
         # Check what is in the cacheDB and cache area
         slDB = slCacheDB()
         allcachedfids = slDB.get_all_fids()
-        cacheareafiles = glob('/home/matthew/cachearea/*.nc')
-        cacheareasubfiles = glob('/home/matthew/cachearea/testnc/*.nc')
+        cachedir = sl_config['cache']['location']
+        cacheareafiles = glob('{}/*.nc'.format(cachedir))
+        cacheareasubfiles = glob('{}/testnc/*.nc'.format(cachedir))
 
         all_cache = []
         for i in cacheareasubfiles:
@@ -157,6 +159,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         self.f = Dataset('s3://minio/databucket/testnc_noncfa.nc', 'w', format='NETCDF4')
         self.f.test = 'Created for SemSL tests'
 
+        sl_config = slConfig()
         dim1 = self.f.createDimension('T', DIMSIZE)
         dim1d = self.f.createVariable('T', 'i4', ('T',))
         dim1d[:] = range(DIMSIZE)
@@ -181,8 +184,9 @@ class test_set0_ReadWrite(unittest.TestCase):
 
         slDB = slCacheDB()
         allcachedfids = slDB.get_all_fids()
-        cacheareafiles = glob('/home/matthew/cachearea/*.nc')
-        cacheareasubfiles = glob('/home/matthew/cachearea/testnc_noncfa/*.nc')
+        cachedir = sl_config['cache']['location']
+        cacheareafiles = glob('{}/*.nc'.format(cachedir))
+        cacheareasubfiles = glob('{}/testnc_noncfa/*.nc'.format(cachedir))
 
         all_cache = []
         for i in cacheareasubfiles:

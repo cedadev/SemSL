@@ -15,6 +15,9 @@ from psutil import virtual_memory
 from SemSL._slConfigManager import slConfig
 from SemSL._baseInterface import _baseInterface as interface
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
+#from SemSL._slCacheDB import slCacheDB_lmdb_nest as slCacheDB
+#from SemSL._slCacheDB import slCacheDB_lmdb_obj as slCacheDB
+#from SemSL._slCacheDB import slCacheDB_sql as slCacheDB
 from SemSL._slCacheManager import slCacheManager as slCache
 
 import SemSL._slUtils as slU

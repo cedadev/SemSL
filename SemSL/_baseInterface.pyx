@@ -257,10 +257,11 @@ class _baseInterface(object):
         for part in partitions:
             # need to check on append mode whether the subfiles exist, if they don't, overwrite append mode with 'w'
             # Cache open needed to get the cache path for checking if the file exists for appends
-            try:
-                path_exists_bool = os.path.exists(slC.open(part.subarray.file,self._init_params['mode']))
-            except ValueError:
-                path_exists_bool = False
+            if  self._init_params['mode'] == 'a': # we only want this check when the mode is 'a'
+                try:
+                    path_exists_bool = os.path.exists(slC.open(part.subarray.file,self._init_params['mode']))
+                except ValueError:
+                    path_exists_bool = False
             if self._init_params['mode'] == 'a' and not path_exists_bool:
                 p = self._write_partition(part, elem_slices,'w')
             else:
