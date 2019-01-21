@@ -11,29 +11,29 @@ def test_slConnectionManager():
     print ("===== S3 =====")
     # test S3
     conn_man = slConnectionManager(sl_config)
-    conn1 = conn_man.open("s3://minio")
-    conn2 = conn_man.open("s3://minio")
+    conn1 = conn_man.open("s3://test")
+    conn2 = conn_man.open("s3://test")
     print ("Total conns: {}\nOpen conns: {}\n".format(
-           conn_man.total_connections("s3://minio"),
-           conn_man.open_connections("s3://minio")))
+           conn_man.total_connections("s3://test"),
+           conn_man.open_connections("s3://test")))
     conn2.release()
     print ("Total conns: {}\nOpen conns: {}\n".format(
-           conn_man.total_connections("s3://minio"),
-           conn_man.open_connections("s3://minio")))
-    conn2 = conn_man.open("s3://minio")
+           conn_man.total_connections("s3://test"),
+           conn_man.open_connections("s3://test")))
+    conn2 = conn_man.open("s3://test")
     print ("Total conns: {}\nOpen conns: {}\n".format(
-           conn_man.total_connections("s3://minio"),
-           conn_man.open_connections("s3://minio")))
-    conn3 = conn_man.open("s3://minio")
+           conn_man.total_connections("s3://test"),
+           conn_man.open_connections("s3://test")))
+    conn3 = conn_man.open("s3://test")
     print ("Total conns: {}\nOpen conns: {}\n".format(
-           conn_man.total_connections("s3://minio"),
-           conn_man.open_connections("s3://minio")))
+           conn_man.total_connections("s3://test"),
+           conn_man.open_connections("s3://test")))
     conn1.close()
     conn2.close()
     conn3.close()
     print ("Total conns: {}\nOpen conns: {}\n".format(
-           conn_man.total_connections("s3://minio"),
-           conn_man.open_connections("s3://minio")))
+           conn_man.total_connections("s3://test"),
+           conn_man.open_connections("s3://test")))
 
     #print ("===== FTP =====")
     # test FTP

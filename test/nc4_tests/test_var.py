@@ -74,7 +74,7 @@ class test_set1_variables(unittest.TestCase):
 
     def test_changearrayvalues(self):
         # create file in backend
-        self.f = Dataset('s3://minio/databucket/testnc_varchange.nc', 'w')
+        self.f = Dataset('s3://test/databucket/testnc_varchange.nc', 'w')
         self.f.setncattr('test', 'Created for SemSL tests')
 
         dim1 = self.f.createDimension('T', DIMSIZE)
@@ -103,7 +103,7 @@ class test_set1_variables(unittest.TestCase):
         sl_cache._clear_cache()
 
         # Now reopen
-        f = Dataset('s3://minio/databucket/testnc_varchange.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_varchange.nc', 'a')
         var = f.variables['var']
         self.assertEqual(var[0,0,0,0], 0)
 
@@ -116,7 +116,7 @@ class test_set1_variables(unittest.TestCase):
         sl_cache._clear_cache()
 
         # now reopen again and check the change
-        f = Dataset('s3://minio/databucket/testnc_varchange.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_varchange.nc', 'r')
         var = f.variables['var']
         self.assertEqual(var[0, 0, 0, 0], 1)
         f.close()
@@ -125,7 +125,7 @@ class test_set1_variables(unittest.TestCase):
         sl_config = slConfig()
         slDB = slCacheDB()
         conn_man = slConnectionManager(sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         sl_cache = slCacheManager()
         sl_cache._clear_cache()
         s3 = conn.get()

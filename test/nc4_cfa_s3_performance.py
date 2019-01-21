@@ -17,7 +17,7 @@ def create_file():
     DIMSIZE = 80
     VARNAME = 'var'
     
-    f = Dataset('s3://minio/databucket/testnc.nc','w')
+    f = Dataset('s3://test/databucket/testnc.nc','w')
     f.test = 'Created for SemSL tests'
 
     dim1 = f.createDimension('T', DIMSIZE)
@@ -45,7 +45,7 @@ def create_file():
     sl_cache._clear_cache()
 
 def read_file():
-    f = Dataset('s3://minio/databucket/testnc.nc', 'r')
+    f = Dataset('s3://test/databucket/testnc.nc', 'r')
     v = f.variables['var']
     data = v[:]
     f.close()
@@ -57,7 +57,7 @@ def cleanup():
     # print(slDB.get_all_fids())
     cache_loc = sl_config['cache']['location']
     conn_man = slConnectionManager(sl_config)
-    conn = conn_man.open("s3://minio")
+    conn = conn_man.open("s3://test")
     sl_cache._clear_cache()
     s3 = conn.get()
     subfiles = s3.list_objects(Bucket='databucket', Prefix='testnc/')['Contents']

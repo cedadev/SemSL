@@ -20,9 +20,9 @@ class TestCacheDB(unittest.TestCase):
     def setUp(self):
         self.sl_cache = slCacheManager()
         # add example file to db
-        self.FID_IN_CACHE = 's3://minio/testbucket/{}'.format(FID_IN_CACHE)
-        self.FID_NOT_IN_CACHE = 's3://minio/testbucket/{}'.format(FID_NOT_IN_CACHE)
-        self.EXTRA_FID_NOT_IN_CACHE = 's3://minio/testbucket/{}'.format(EXTRA_FID_NOT_IN_CACHE)
+        self.FID_IN_CACHE = 's3://test/testbucket/{}'.format(FID_IN_CACHE)
+        self.FID_NOT_IN_CACHE = 's3://test/testbucket/{}'.format(FID_NOT_IN_CACHE)
+        self.EXTRA_FID_NOT_IN_CACHE = 's3://test/testbucket/{}'.format(EXTRA_FID_NOT_IN_CACHE)
         self.sl_cache.DB.add_entry(self.FID_IN_CACHE,size=60*10**6)
         self.sl_config = slConfig()
 
@@ -88,9 +88,9 @@ class TestCacheDB(unittest.TestCase):
         all_fids = self.sl_cache.DB.get_all_fids()
         all_fids = list(all_fids)
         self.assertEqual(collections.Counter(all_fids),
-                         collections.Counter(['s3://minio/testbucket/testextranotincache',
-                                              's3://minio/testbucket/testincache',
-                                              's3://minio/testbucket/testnotincache']))
+                         collections.Counter(['s3://test/testbucket/testextranotincache',
+                                              's3://test/testbucket/testincache',
+                                              's3://test/testbucket/testnotincache']))
 
     def test_get_fid(self):
         self.assertEqual(self.sl_cache.DB.get_fid(self.FID_IN_CACHE),self.FID_IN_CACHE)
@@ -100,9 +100,9 @@ class TestCacheManager(unittest.TestCase):
     def setUp(self):
         self.sl_cache = slCacheManager()
         # add example file to db
-        self.FID_IN_CACHE = 's3://minio/cachetest/{}'.format(FID_IN_CACHE)
-        self.FID_NOT_IN_CACHE = 's3://minio/cachetest/{}'.format(FID_NOT_IN_CACHE)
-        self.EXTRA_FID_NOT_IN_CACHE = 's3://minio/cachetest/{}'.format(EXTRA_FID_NOT_IN_CACHE)
+        self.FID_IN_CACHE = 's3://test/cachetest/{}'.format(FID_IN_CACHE)
+        self.FID_NOT_IN_CACHE = 's3://test/cachetest/{}'.format(FID_NOT_IN_CACHE)
+        self.EXTRA_FID_NOT_IN_CACHE = 's3://test/cachetest/{}'.format(EXTRA_FID_NOT_IN_CACHE)
         self.sl_cache.DB.add_entry(self.FID_IN_CACHE,size=60*10**6)
         self.sl_config = slConfig()
         self.cache_loc = self.sl_config['cache']['location']
@@ -113,7 +113,7 @@ class TestCacheManager(unittest.TestCase):
         with open('{}/{}'.format(self.cache_loc, self.EXTRA_FID_NOT_IN_CACHE.split('/')[-1]), 'w') as f:
             f.write('testwrite')
         conn_man = slConnectionManager(self.sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         s3 = conn.get()
         s3.create_bucket(Bucket='cachetest')
         s3.upload_file('{}/{}'.format(self.cache_loc, self.FID_IN_CACHE.split('/')[-1]),
@@ -134,7 +134,7 @@ class TestCacheManager(unittest.TestCase):
         except:
             print("Couldn't clear cache in tearDown?")
         conn_man = slConnectionManager(self.sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         s3 = conn.get()
         s3.delete_object(Bucket='cachetest',
                        Key='{}'.format(self.FID_IN_CACHE.split('/')[-1]))
@@ -196,7 +196,7 @@ class TestCacheManager(unittest.TestCase):
     # I've removed this test for now because I don't think it is sensible:  the cache open won't create a file, so
     # what am I checking for??
     # def test_put_fid_not_from_cache(self):
-    #     fid = 's3://minio/newtestbucket/filehead/filesub.nc'
+    #     fid = 's3://test/newtestbucket/filehead/filesub.nc'
     #     nc = self.sl_cache.open(fid,access_type='w',test=True)
     #     try:
     #         self.sl_cache.close(fid, 'w', test=True)
@@ -205,7 +205,7 @@ class TestCacheManager(unittest.TestCase):
     #     nc = self.sl_cache.open(fid, access_type='r', test=True)
     #     self.sl_cache.close(fid, 'w', test=True)
     #     conn_man = slConnectionManager(self.sl_config)
-    #     conn = conn_man.open("s3://minio")
+    #     conn = conn_man.open("s3://test")
     #     s3 = conn.get()
     #     s3.delete_object(Bucket='newtestbucket',
     #                      Key='filehead/filesub.nc')
@@ -215,7 +215,7 @@ class TestCacheManager(unittest.TestCase):
     def test_read_fail(self):
         # read should fail when file doesn't exist
         try:
-            fid = 's3://minio/newtestbucket/filehead/filesub.nc'
+            fid = 's3://test/newtestbucket/filehead/filesub.nc'
             nc = self.sl_cache.open(fid, access_type='r', test=True)
             read = True
         except ValueError:
@@ -223,7 +223,7 @@ class TestCacheManager(unittest.TestCase):
         self.assertFalse(read)
         # append should fail when file doesn't exist
         try:
-            fid = 's3://minio/newtestbucket/filehead/filesub.nc'
+            fid = 's3://test/newtestbucket/filehead/filesub.nc'
             nc = self.sl_cache.open(fid, access_type='a', test=True)
             read = True
         except ValueError:
@@ -276,7 +276,7 @@ class TestCacheManagerUtils(unittest.TestCase):
     def test_posix_check_alias_not_exists(self):
         self.assertFalse(self.sl_cache._check_whether_posix('s3://munuom/test','r'))
     def test_posix_check_alias_exists(self):
-        self.assertTrue(self.sl_cache._check_whether_posix('s3://minio/test','r'))
+        self.assertTrue(self.sl_cache._check_whether_posix('s3://test/test','r'))
 
 # class TestWithS3_realdata(unittest.TestCase):
 #     def setUp(self):

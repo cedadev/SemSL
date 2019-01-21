@@ -425,7 +425,7 @@ class test_set2_Methods_posix_noncfa(unittest.TestCase):
 class test_set5_Methods_s3_cfa(unittest.TestCase):
     def setUp(self):
         # Create test dataset
-        self.f = Dataset('s3://minio/databucket/testnc_methods.nc', 'w')
+        self.f = Dataset('s3://test/databucket/testnc_methods.nc', 'w')
         self.f.setncattr('test','Created for SemSL tests')
 
         dim1 = self.f.createDimension('T', DIMSIZE)
@@ -457,7 +457,7 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         slDB = slCacheDB()
         cache_loc = sl_config['cache']['location']
         conn_man = slConnectionManager(sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         # construct list of subfiles
         subfiles = glob('{}/testnc_methods/*.nc'.format(cache_loc))
         subfiles = ['testnc_methods/'+file.split('/')[-1] for file in subfiles]
@@ -473,82 +473,82 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
 
 
     def test_var_setncattr(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncattr('newtest','newtestvalue')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         f.close()
 
     def test_var_ncattrs(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         attrs = v.ncattrs()
         self.assertEqual(attrs, ['cf_role', 'cf_dimensions', 'cfa_array', 'units'])
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         attrs = v.ncattrs()
         self.assertEqual(attrs, ['cf_role', 'cf_dimensions', 'cfa_array', 'units'])
         f.close()
 
     def test_var_setncattr_string(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncattr_string('newtest', 'newtestvalue')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         f.close()
 
     def test_var_setncatts(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncatts({'newtest': 'newtestvalue', 'secondnew': 'secondnewval'})
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         self.assertEqual(v.getncattr('secondnew'), 'secondnewval')
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         self.assertEqual(v.getncattr('secondnew'), 'secondnewval')
         f.close()
 
     def test_var_getncattr(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         self.assertEqual(v.getncattr('units'), 'test unit')
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('units'), 'test unit')
         f.close()
 
     def test_var_delncattr(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.delncattr('units')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         test_bool = False
         try:
@@ -559,7 +559,7 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         self.assertTrue(test_bool)
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         test_bool = False
         try:
@@ -571,13 +571,13 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         f.close()
 
     def test_get_var_chunk_cache(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.get_var_chunk_cache(), (1048576, 521, 0.75))
         f.close()
 
     def test_set_var_chunk_cache(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.set_var_chunk_cache(size=10485760)
 
@@ -585,11 +585,11 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         f.close()
 
     def test_var_renameAttribute(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.renameAttribute('units', 'renamedattr')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         test_bool = False
         try:
@@ -600,7 +600,7 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
         self.assertEqual(v.getncattr('renamedattr'), 'test unit')
         f.close()
         # now check a subfile...
-        f = Dataset('s3://minio/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods/testnc_methods_var_[0].nc', 'r')
         v = f.variables['var']
         test_bool = False
         try:
@@ -649,7 +649,7 @@ class test_set5_Methods_s3_cfa(unittest.TestCase):
 class test_set4_Methods_s3_noncfa(unittest.TestCase):
     def setUp(self):
         # Create test dataset
-        self.f = Dataset('s3://minio/databucket/testnc_methods.nc', 'w', format='NETCDF4')
+        self.f = Dataset('s3://test/databucket/testnc_methods.nc', 'w', format='NETCDF4')
         self.f.setncattr('test','Created for SemSL tests')
 
         dim1 = self.f.createDimension('T', DIMSIZE)
@@ -681,62 +681,62 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         slDB = slCacheDB()
         cache_loc = sl_config['cache']['location']
         conn_man = slConnectionManager(sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         sl_cache._clear_cache()
         s3 = conn.get()
         s3.delete_object(Bucket='databucket', Key='testnc_methods.nc')
         s3.delete_bucket(Bucket='databucket')
 
     def test_var_ncattrs(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         attrs = v.ncattrs()
         self.assertEqual(attrs, ['units'])
         f.close()
 
     def test_var_setncattr(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncattr('newtest','newtestvalue')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         f.close()
 
     def test_var_setncattr_string(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncattr_string('newtest', 'newtestvalue')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         f.close()
 
     def test_var_setncatts(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.setncatts({'newtest': 'newtestvalue', 'secondnew': 'secondnewval'})
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.getncattr('newtest'), 'newtestvalue')
         self.assertEqual(v.getncattr('secondnew'), 'secondnewval')
         f.close()
 
     def test_var_getncattr(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         self.assertEqual(v.getncattr('units'),'test unit')
         f.close()
 
     def test_var_delncattr(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.delncattr('units')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         test_bool = False
         try:
@@ -748,13 +748,13 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         f.close()
 
     def test_get_var_chunk_cache(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         self.assertEqual(v.get_var_chunk_cache(), (1048576, 521, 0.75))
         f.close()
 
     def test_set_var_chunk_cache(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.set_var_chunk_cache(size=10485760)
 
@@ -762,11 +762,11 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         f.close()
 
     def test_var_renameAttribute(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         v.renameAttribute('units', 'renamedattr')
         f.close()
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
         v = f.variables['var']
         test_bool = False
         try:
@@ -778,7 +778,7 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         f.close()
 
     def test_var_set_auto_chartostring(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         self.assertTrue(f.variables['var'].chartostring)
         v.set_auto_chartostring(False)
@@ -786,7 +786,7 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         f.close()
 
     def test_var_set_auto_mask(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         self.assertTrue(f.variables['var'].mask)
         v.set_auto_mask(False)
@@ -794,7 +794,7 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         f.close()
 
     def test_var_set_auto_maskandscale(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         self.assertTrue(f.variables['var'].mask)
         self.assertTrue(f.variables['var'].scale)
@@ -804,7 +804,7 @@ class test_set4_Methods_s3_noncfa(unittest.TestCase):
         f.close()
 
     def test_var_set_auto_scale(self):
-        f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+        f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
         v = f.variables['var']
         self.assertTrue(f.variables['var'].scale)
         v.set_auto_scale(False)

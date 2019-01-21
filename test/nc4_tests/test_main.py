@@ -62,7 +62,7 @@ class test_set0_ReadWrite(unittest.TestCase):
 
 
     def test_04_s3_write(self):
-        self.f = Dataset('s3://minio/databucket/testnc.nc', 'w')
+        self.f = Dataset('s3://test/databucket/testnc.nc', 'w')
         self.f.test = 'Created for SemSL tests'
 
         sl_config = slConfig()
@@ -123,7 +123,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         self.f.close()
 
     def test_05_read_s3(self):
-        self.f = Dataset('s3://minio/databucket/testnc.nc', 'r')
+        self.f = Dataset('s3://test/databucket/testnc.nc', 'r')
         v = self.f.getVariable('var')
         data = v[:]
         self.assertTrue(data[0,0,0,0])
@@ -146,7 +146,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         #print(slDB.get_all_fids())
         cache_loc = sl_config['cache']['location']
         conn_man = slConnectionManager(sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         sl_cache._clear_cache()
         s3 = conn.get()
         subfiles = s3.list_objects(Bucket='databucket',Prefix='testnc/')['Contents']
@@ -156,7 +156,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         s3.delete_bucket(Bucket='databucket')
 
     def test_07_write_none_cfa(self):
-        self.f = Dataset('s3://minio/databucket/testnc_noncfa.nc', 'w', format='NETCDF4')
+        self.f = Dataset('s3://test/databucket/testnc_noncfa.nc', 'w', format='NETCDF4')
         self.f.test = 'Created for SemSL tests'
 
         sl_config = slConfig()
@@ -208,7 +208,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         sl_cache._clear_cache()
 
     def test_08_read_none_cfa(self):
-        self.f = Dataset('s3://minio/databucket/testnc_noncfa.nc', 'r')
+        self.f = Dataset('s3://test/databucket/testnc_noncfa.nc', 'r')
         v = self.f.variables['var']
         data = v[:]
         self.assertTrue(data[0,0,0,0])
@@ -221,7 +221,7 @@ class test_set0_ReadWrite(unittest.TestCase):
         #print(slDB.get_all_fids())
         cache_loc = sl_config['cache']['location']
         conn_man = slConnectionManager(sl_config)
-        conn = conn_man.open("s3://minio")
+        conn = conn_man.open("s3://test")
         sl_cache._clear_cache()
         s3 = conn.get()
         s3.delete_object(Bucket='databucket',Key='testnc_noncfa.nc')

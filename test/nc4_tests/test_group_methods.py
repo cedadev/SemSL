@@ -802,7 +802,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 # class test_groups_s3_noncfa(unittest.TestCase):
 #     def setUp(self):
 #         # Create test dataset
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'w',format='NETCDF4')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'w',format='NETCDF4')
 #         f.setncattr('test', 'Created for SemSL tests')
 #
 #         dim1 = f.createDimension('T', DIMSIZE)
@@ -834,12 +834,12 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         pass
 #
 #     def test_createDimension(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc','a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc','a')
 #         g = f.createGroup('testgroup')
 #         g.createDimension('extradim',10)
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
 #         for i,j in zip(f.dimensions.keys(),['T','Z','Y','X']):
 #             self.assertEqual(i,j)
 #         g = f.groups['testgroup']
@@ -851,7 +851,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         pass
 #
 #     def test_createGroup(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.createVariable('tesgroupvar','f8')
 #         sg = g.createGroup('nestedgroup')
@@ -859,7 +859,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #
 #         g = f.groups['testgroup']
 #
@@ -873,18 +873,18 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         pass
 #
 #     def test_data_model(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         self.assertEqual(g.data_model,'NETCDF4')
 #         f.close()
 #
 #     def test_delncattr(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr','testattrval')
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.groups['testgroup']
 #         self.assertEqual(g.testattr,'testattrval')
 #         g.delncattr('testattr')
@@ -893,7 +893,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_dimensions(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.createDimension('extradim', 10)
 #         for i,j in zip(g.dimensions.keys(),['extradim']):
@@ -902,7 +902,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_disk_format(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var','f8')
 #         v[:] = 1
@@ -913,19 +913,19 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         pass
 #
 #     def test_file_format(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         self.assertEqual(g.file_format,'NETCDF4')
 #         f.close()
 #
 #     def test_filepath(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         self.assertEqual(g.filepath(), './testnc_methods.nc')
 #         f.close()
 #
 #     def test_get_variables_by_attributes(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('testgroupvar', 'f8')
 #         v.testattr = 'val'
@@ -943,25 +943,25 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_getncattr(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr','val')
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
 #         g = f.groups['testgroup']
 #         self.assertEqual(g.getncattr('testattr'),'val')
 #         f.close()
 #
 #     def test_groups(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         sg = g.createGroup('nestedgroup')
 #         self.assertEqual([x for x in g.groups], ['nestedgroup'])
 #         f.close()
 #
 #     def test_isopen(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         self.assertFalse(g.isopen())
 #         f.close()
@@ -971,13 +971,13 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         pass
 #
 #     def test_name(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         self.assertEqual(g.name, 'testgroup')
 #         f.close()
 #
 #     def test_ncattrs(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr', 'val')
 #         g.setncattr('testattr2', 'val2')
@@ -993,26 +993,26 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         pass
 #
 #     def test_path(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         self.assertEqual(g.path, '/testgroup')
 #         f.close()
 #
 #     def test_renameAttribute(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr', 'val')
 #         g.setncattr('testattr2', 'val2')
 #         self.assertEqual(g.ncattrs(), ['testattr', 'testattr2'])
 #         f.close()
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.groups['testgroup']
 #         g.renameAttribute('testattr','renamedattr')
 #         self.assertEqual(g.ncattrs(), ['renamedattr', 'testattr2'])
 #         f.close()
 #
 #     def test_renameDimension(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.createDimension('testdim',50)
 #         self.assertEqual([x for x in g.dimensions.keys()],['testdim'])
@@ -1021,7 +1021,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_renameGroup(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         gg = g.createGroup('subgroup')
 #         self.assertEqual([x for x in g.groups.keys()],['subgroup'])
@@ -1030,7 +1030,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_renameVariable(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.createVariable('var','f8')
 #         self.assertEqual([x for x in g.variables.keys()], ['var'])
@@ -1067,21 +1067,21 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_setncattr(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr','val')
 #         self.assertEqual(g.ncattrs(),['testattr'])
 #         f.close()
 #
 #     def test_setncattr_string(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr', 'val')
 #         self.assertEqual(g.ncattrs(), ['testattr'])
 #         f.close()
 #
 #     def test_setncatts(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncatts({'testattr':'val','at2':'val2'})
 #         self.assertEqual(g.ncattrs(), ['testattr','at2'])
@@ -1096,7 +1096,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_variables(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.createVariable('var', 'f8')
 #         self.assertEqual([x for x in g.variables.keys()], ['var'])
@@ -1105,7 +1105,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 # class test_groups_s3_cfa(unittest.TestCase):
 #     def setUp(self):
 #         # Create test dataset
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'w')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'w')
 #         f.setncattr('test', 'Created for SemSL tests')
 #
 #         dim1 = f.createDimension('T', DIMSIZE)
@@ -1147,7 +1147,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_createDimension(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc','a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc','a')
 #         g = f.createGroup('testgroup')
 #         g.createDimension('extradim',10)
 #         g.createVariable('extradim','i4',('extradim',))
@@ -1155,7 +1155,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         v[:] = np.zeros((20,10))
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
 #         for i,j in zip(f.dimensions.keys(),['T','Z','Y','X']):
 #             self.assertEqual(i,j)
 #         g = f.groups['testgroup']
@@ -1164,7 +1164,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #             self.assertEqual(i,j)
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods_testgroup_var_[0].nc','r')
+#         f = Dataset('s3://test/databucket/testnc_methods_testgroup_var_[0].nc','r')
 #         for i, j in zip(f.dimensions.keys(), ['T', 'Z', 'Y', 'X']):
 #             self.assertEqual(i, j)
 #         g = f.groups['testgroup']
@@ -1177,7 +1177,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_createGroup(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('tesgroupvar','f8',('T','Z'))
 #         sg = g.createGroup('nestedgroup')
@@ -1186,7 +1186,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         v2[:] = np.zeros((20,20))
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #
 #         g = f.groups['testgroup']
 #
@@ -1200,7 +1200,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_data_model(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var','f8',('T'))
 #         v[:] = np.zeros(20)
@@ -1208,14 +1208,14 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_delncattr(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr','testattrval')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.groups['testgroup']
 #         self.assertEqual(g.testattr,'testattrval')
 #         g.delncattr('testattr')
@@ -1224,7 +1224,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_dimensions(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1235,7 +1235,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_disk_format(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var','f8',('T'))
 #         v[:] = np.zeros(20)
@@ -1246,7 +1246,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_file_format(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var','f8',('T'))
 #         v[:] = np.zeros(20)
@@ -1254,15 +1254,15 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_filepath(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
-#         self.assertEqual(g.filepath(), 's3://minio/databucket/testnc_methods.nc')
+#         self.assertEqual(g.filepath(), 's3://test/databucket/testnc_methods.nc')
 #         f.close()
 #
 #     def test_get_variables_by_attributes(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('testgroupvar', 'f8',('T'))
 #         v[:] = np.zeros(20)
@@ -1284,20 +1284,20 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_getncattr(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         g.setncattr('testattr','val')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
 #         f.close()
 #
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'r')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'r')
 #         g = f.groups['testgroup']
 #         self.assertEqual(g.getncattr('testattr'),'val')
 #         f.close()
 #
 #     def test_groups(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1306,7 +1306,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_isopen(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1318,7 +1318,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_name(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1326,7 +1326,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_ncattrs(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1344,7 +1344,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_path(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1352,7 +1352,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_renameAttribute(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1360,14 +1360,14 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         g.setncattr('testattr2', 'val2')
 #         self.assertEqual(g.ncattrs(), ['testattr', 'testattr2'])
 #         f.close()
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.groups['testgroup']
 #         g.renameAttribute('testattr','renamedattr')
 #         self.assertEqual(g.ncattrs(), ['renamedattr', 'testattr2'])
 #         f.close()
 #
 #     def test_renameDimension(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1378,7 +1378,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_renameGroup(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1389,7 +1389,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_renameVariable(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var','f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1427,7 +1427,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_setncattr(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1436,7 +1436,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_setncattr_string(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1445,7 +1445,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #         f.close()
 #
 #     def test_setncatts(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
@@ -1462,7 +1462,7 @@ class test_groups_posix_cfa(unittest.TestCase):
 #     #     pass
 #
 #     def test_variables(self):
-#         f = Dataset('s3://minio/databucket/testnc_methods.nc', 'a')
+#         f = Dataset('s3://test/databucket/testnc_methods.nc', 'a')
 #         g = f.createGroup('testgroup')
 #         v = g.createVariable('var', 'f8', ('T'))
 #         v[:] = np.zeros(20)
