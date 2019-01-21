@@ -3,6 +3,7 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 
 from SemSL._slConfigManager import slConfig
 from SemSL import Backends
+from SemSL._slExceptions import slConfigFileException
 
 sl_config = slConfig()
 
@@ -33,7 +34,7 @@ def _get_hostname(fid):
             if alias in hosts[h]['alias']:
                 host_name = h
     except Exception as e:
-        raise ValueError("Error in config file {} {}".format(
+        raise slConfigFileException("Error in config file {} {}".format(
             sl_config["filename"],
             e))
     return host_name

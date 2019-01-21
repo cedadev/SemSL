@@ -3,8 +3,8 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 
 import boto3
 from botocore.exceptions import ClientError
+from SemSL._slExceptions import slIOException
 from botocore.client import Config
-
 from _slBackend import slBackend
 from SemSL._slExceptions import slIOException, slAPIException
 
@@ -43,7 +43,7 @@ class slS3Backend(slBackend):
         try:
             conn.delete_object(Bucket=bucket, Key=key)
         except ClientError:
-            raise ValueError('Cannot remove object from backend: File not found')
+            raise slIOException('Cannot remove object from backend: File not found')
 
     def download(self,conn,bucket,key,cacheloc):
         ''' Downloads file from OS to prescribed place in cache.
@@ -51,7 +51,7 @@ class slS3Backend(slBackend):
         try:
             conn.download_file(bucket, key, cacheloc)# only works with boto3 client objects
         except ClientError:
-            raise ValueError('Cannot download object: File not found')
+            raise slIOException('Cannot download object: File not found')
 
     def create_bucket(self,conn,bucket):
         ''' Creates bucket.

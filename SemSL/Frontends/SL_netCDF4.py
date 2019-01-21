@@ -19,6 +19,8 @@ from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
 #from SemSL._slCacheDB import slCacheDB_lmdb_obj as slCacheDB
 #from SemSL._slCacheDB import slCacheDB_sql as slCacheDB
 from SemSL._slCacheManager import slCacheManager as slCache
+from SemSL._slExceptions import slConfigFileException, slIOException, slNetCDFException
+
 
 import SemSL._slUtils as slU
 
@@ -110,7 +112,7 @@ class slDataset(object):
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
                     read_threads = self._sl_config['hosts'][host_name]['read_connections']
                     write_threads = self._sl_config['hosts'][host_name]['write_connections']
-                except ValueError:
+                except slConfigFileException:
                     obj_size = 0
                     read_threads = 1
                     write_threads = 1
@@ -176,7 +178,7 @@ class slDataset(object):
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
                     read_threads = self._sl_config['hosts'][host_name]['read_connections']
                     write_threads = self._sl_config['hosts'][host_name]['write_connections']
-                except ValueError:
+                except slConfigFileException:
                     obj_size = 0
                     read_threads = 1
                     write_threads = 1
@@ -201,7 +203,7 @@ class slDataset(object):
 
         else:
             # no other modes are supported
-            raise ValueError("Mode " + mode + " not supported.")
+            raise slIOException("Mode " + mode + " not supported.")
         if self._file_details.cfa_file:
             self._file_details.cfa_file.groups = dict(self.groups)
 
@@ -272,7 +274,7 @@ class slDataset(object):
                     try:
                         dvar = self.variables[d]
                     except KeyError as e:
-                        raise ValueError('{}\n\nError: The dimension variables need to created before a '
+                        raise slNetCDFException('{}\n\nError: The dimension variables need to created before a '
                                          'variable which relies on them.'.format(e))
 
 
@@ -282,7 +284,7 @@ class slDataset(object):
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
                     read_threads = self._sl_config['hosts'][host_name]['read_connections']
                     write_threads = self._sl_config['hosts'][host_name]['write_connections']
-                except ValueError:
+                except slConfigFileException:
                     obj_size = 0
                     obj_size = self._sl_config['system']['default_object_size']
                     read_threads = 1
@@ -306,7 +308,7 @@ class slDataset(object):
                 if chunksizes is not None:
                     for i,sv_el in enumerate(subarrayshape):
                         if chunksizes[i] > sv_el:
-                            raise ValueError('The chunksize {} is incompatible with the subarray shape {}, please'
+                            raise slNetCDFException('The chunksize {} is incompatible with the subarray shape {}, please'
                                              ' make the chunksize smaller than the subarray shape.'.format
                                                                                                     (chunksizes,
                                                                                                      subarrayshape))
@@ -611,7 +613,7 @@ class slDataset(object):
                     posix_files.append(file)
                     all_open_files.append(file)
                 elif not self.slC._check_whether_posix:
-                    raise ValueError("Alias doesn't exist, and the lib doesn't "
+                    raise slIOException("Alias doesn't exist, and the lib doesn't "
                                      "think the files path is POSIX for {}".format(file))
 
             if len(files_for_download)>0:
@@ -795,7 +797,7 @@ class slGroup(object):
                         try:
                             dvar = self._nc_parent.variables[d]
                         except KeyError as e:
-                            raise ValueError('{}\n\nError: The dimension variables need to created before a '
+                            raise slNetCDFException('{}\n\nError: The dimension variables need to created before a '
                                              'variable which relies on them.'.format(e))
 
                 # Get the host name in order to get the obj size, otherwise refer to default
@@ -804,7 +806,7 @@ class slGroup(object):
                     obj_size = self._sl_config['hosts'][host_name]['object_size']
                     read_threads = self._sl_config['hosts'][host_name]['read_connections']
                     write_threads = self._sl_config['hosts'][host_name]['write_connections']
-                except ValueError:
+                except slConfigFileException:
                     obj_size = 0
                     obj_size = self._sl_config['system']['default_object_size']
                     read_threads = 1
@@ -830,7 +832,7 @@ class slGroup(object):
                 if chunksizes is not None:
                     for i, sv_el in enumerate(subarrayshape):
                         if chunksizes[i] > sv_el:
-                            raise ValueError('The chunksize {} is incompatible with the subarray shape {}, please'
+                            raise slNetCDFException('The chunksize {} is incompatible with the subarray shape {}, please'
                                              ' make the chunksize smaller than the subarray shape.'.format
                                              (chunksizes,
                                               subarrayshape))
@@ -1120,7 +1122,7 @@ class slVariable(object):
                 all_open_files.append(file)
 
             elif not self.check_whether_posix:
-                raise ValueError("Alias doesn't exist, and the lib doesn't "
+                raise slIOException("Alias doesn't exist, and the lib doesn't "
                                  "think the files path is POSIX for {}".format(file))
 
         if len(files_for_download)>0:

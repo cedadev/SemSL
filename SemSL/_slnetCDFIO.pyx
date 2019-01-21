@@ -9,11 +9,11 @@ __copyright__ = "(C) 2012 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 
 #from _s3Client import *
-from _s3Exceptions import *
 from _CFAClasses import *
 from SemSL._slCacheManager import slCacheManager
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
+from SemSL._slExceptions import slIOException
 import SemSL._slUtils as slU
 from SemSL import Backends
 
@@ -190,12 +190,12 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
 
             # Check whether the object exists
             if not backend.get_head_object(conn,s3_bucket_name,s3_object_name):
-                raise s3IOException("Error: " + s3_object_name + " not found.")
+                raise slIOException("Error: " + s3_object_name + " not found.")
 
             # check whether this object is a netCDF file
             file_type, file_version = _get_netCDF_filetype(conn, s3_bucket_name, s3_object_name, backend)
             if file_type == "NOT_NETCDF" or file_version == 0:
-                raise s3IOException("Error: " + s3_object_name + " is not a netCDF file.")
+                raise slIOException("Error: " + s3_object_name + " is not a netCDF file.")
 
             # retain the filetype
             file_details.format = file_type

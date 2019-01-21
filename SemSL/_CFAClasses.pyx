@@ -55,10 +55,6 @@ cimport numpy as np
 import json
 
 
-class CFAException(BaseException):
-    pass
-
-
 cdef class CFAFile:
     """
        Class containing details of a CFAFile (master array)

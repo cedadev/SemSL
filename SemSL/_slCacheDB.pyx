@@ -12,6 +12,7 @@ import collections
 import datetime
 from SemSL._slConfigManager import slConfig
 import SemSL._slUtils as slU
+from SemSL._slExceptions import slDBException
 
 
 # We need a database interface to not use lmdb potentially without a refactor
@@ -236,7 +237,7 @@ class slCacheDB_lmdb_nest(slCacheDB):
         # check that it doesn't already exist
         try:
             self.env.open_db(fid,write=False)
-            raise ValueError('Child database already exists!')
+            raise slDBException('Child database already exists!')
         except TypeError:
             pass
         # add the child db path into the env db

@@ -12,6 +12,7 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 import os
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
+from SemSL._slExceptions import slIOException, slCacheException
 import SemSL._slUtils as slU
 
 from SemSL._slCacheDB import slCacheDB_lmdb as slCacheDB
@@ -186,9 +187,9 @@ class slCacheManager(object):
         elif self._check_whether_posix(fid,access_type):
             return fid
         elif not self._check_whether_posix(fid,access_type):
-            raise ValueError("Invalid alias, or path doesn't exist")
+            raise slIOException("Invalid alias, or path doesn't exist")
         else:
-            raise TypeError('File ID not valid')
+            raise slIOException('File ID not valid ({})'.format(fid))
 
 
         if self.diskless:
@@ -227,7 +228,7 @@ class slCacheManager(object):
             return self.DB.get_cache_loc(fid)
 
         else:
-            raise ValueError('Invalid access type')
+            raise slIOException('Invalid access type')
 
 
     def close(self,fid,mode,subfiles_accessed=[],test=False):
@@ -255,7 +256,7 @@ class slCacheManager(object):
 
 
         else:
-            raise ValueError('Access mode not supported')
+            raise slIOException('Access mode not supported')
 
     def bulk_download(self,file_list):
         # Download all the files in the list in one backend call
@@ -291,7 +292,7 @@ class slCacheManager(object):
                 file_size = backend.get_object_size(client,bucket,fname)
                 tot_size+=file_size
                 if tot_size > self.sl_config['cache']['cache_size']:
-                    raise ValueError("When updating subfile metadata the subfile's total size exceeded the"
+                    raise slCacheException("When updating subfile metadata the subfile's total size exceeded the"
                                      "size of the cache")
             # remove oldest cached files if need be
                 self._remove_oldest(file_size)

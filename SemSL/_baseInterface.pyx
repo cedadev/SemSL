@@ -14,6 +14,7 @@ from ._CFAFunctions import get_source_target_slices
 import numpy
 from queue import Queue
 from SemSL._slCacheManager import slCacheManager as slCache
+from SemSL._slExceptions import slIOException, slInterfaceException
 
 class _baseInterface(object):
     """Class to represent a base for reading / writing / uploading netCDF files to disk or S3.
@@ -34,7 +35,7 @@ class _baseInterface(object):
         slC = slCache()
         try:
             file_details = slC.open(part.subarray.file, access_type='r')
-        except ValueError:
+        except slIOException:
             os.makedirs(os.path.dirname(part.subarray.file))
             file_details = slC.open(part.subarray.file, access_type='r')
 
@@ -71,7 +72,7 @@ class _baseInterface(object):
 
         try:
             file_details = slC.open(part.subarray.file, access_type=mode)
-        except ValueError:
+        except slIOException:
             os.makedirs(os.path.dirname(part.subarray.file))
             file_details = slC.open(part.subarray.file, access_type=mode)
         # check if the file has already been created
@@ -80,7 +81,7 @@ class _baseInterface(object):
         # instead only check the mode!
             # open the file in append mode
         if mode == 'r':
-            raise ValueError('Error: Can not change values in variable in read mode.')
+            raise slInterfaceException('Cannot change values in variable in read mode.')
             # ncfile = netCDF4.Dataset(file_details, mode=mode)
             # var = ncfile.variables[self._nc_var.name]
         elif mode == 'a' or mode == 'r+':
@@ -186,7 +187,7 @@ class _baseInterface(object):
             #     gattr[at] = self._cfa_file.groups[self._group.name].getncattr(at)
             # group.setncatts(gattr)
         else:
-            raise ValueError('Invalid file access mode in partition access.')
+            raise slIOException('Invalid file access mode in partition access.')
 
 
         # now copy the data in.  We have to decide where to copy this fragment of the data to (target)
