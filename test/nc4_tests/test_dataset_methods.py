@@ -393,13 +393,14 @@ class test_set3_Methods_posix_cfa(unittest.TestCase):
         dim2d = fg.createVariable('Z', 'i4', ('Z',))
         dim2d[:] = range(DIMSIZE)
         var = fg.createVariable(VARNAME, 'f8', ('T', 'Z'), contiguous=True)
-
+        var[:] = np.zeros((20,20))
+        self.assertEqual(var.shape, [20, 20])
         f.close()
 
         f = Dataset('./test_groups.nc', 'a')
         f.renameGroup('testgroup', 'renamedgroup')
         var = f.groups['renamedgroup'].variables['var']
-        self.assertEqual(var.shape, (20, 20))
+        self.assertEqual(var.shape, [20, 20])
 
         f.close()
 

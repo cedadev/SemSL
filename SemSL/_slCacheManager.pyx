@@ -148,8 +148,16 @@ class slCacheManager(object):
         if slU._get_alias(fid) is None:
             # Check whether is looks like a filepath
             # use os.path.exists for a or r
-            if access_type == 'r' or access_type == 'a':
+            if access_type == 'r':
                 return os.path.exists(fid)
+
+            elif access_type == 'a':
+                if os.path.exists(fid):
+                    return True
+                elif not '/' in fid:
+                    return True
+                else:
+                    return os.path.exists(os.path.dirname(fid))
 
             elif access_type == 'w':
                 if not '/' in fid:

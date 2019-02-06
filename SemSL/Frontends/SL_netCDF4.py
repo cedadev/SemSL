@@ -27,7 +27,7 @@ from collections import OrderedDict, deque
 # the _private_atts list from netCDF4._netCDF4 will be extended with these
 _sl_private_atts = [
  # member variables
- '_file_details', '_cfa_variables', '_sl_config', 'filename', 'slC', '_changed_attrs'
+ '_file_details', '_cfa_variables', '_sl_config', 'filename', 'slC', '_changed_attrs','groups'
 ]
 netCDF4._private_atts.extend(_sl_private_atts)
 
@@ -100,7 +100,6 @@ class slDataset(object):
             except:
                 cfa = False
 
-
             if cfa:
                 # Get the host name in order to get the specific settings
                 #try:
@@ -120,6 +119,7 @@ class slDataset(object):
                 self._file_details.cfa_file.parse(self)
                 self._file_details.cfa_file.format = self._file_details.format
                 # recreate the variables as s3Variables and attach the cfa data
+
                 for v in self.variables:
                     if v in self._file_details.cfa_file.cfa_vars:
                         self._cfa_variables[v] = slVariable(self.variables[v],
@@ -141,6 +141,7 @@ class slDataset(object):
         elif mode == 'w':           # write
             # check the format for writing - allow CFA4 in arguments and default to it as well
             # we DEFAULT to CFA4 for writing to S3 object stores so as to distribute files across objects
+
             if format == 'CFA4' or format == 'DEFAULT':
                 self._file_details.format = 'NETCDF4'
                 self._file_details.cfa_file = CFAFile()
@@ -201,7 +202,9 @@ class slDataset(object):
         else:
             # no other modes are supported
             raise ValueError("Mode " + mode + " not supported.")
-        self.groups = self.ncD.groups
+        if self._file_details.cfa_file:
+            self._file_details.cfa_file.groups = dict(self.groups)
+
 
     def __enter__(self):
         """Allows objects to be used with a `with` statement."""
@@ -399,7 +402,7 @@ class slDataset(object):
                 for att in varattrs_list:
                     varattrs[att] = self.variables[varname].getncattr(att)
                 # print(varattrs)
-                svs, sfs, open_files, subfiles_attr = self.return_subvars(varname=varname)
+                svs, sfs, sgs, open_files, subfiles_attr = self.return_subvars(varname=varname)
                 # add any subfiles into the list of files to upload
 
                 for subfile in subfiles_attr:
@@ -418,12 +421,22 @@ class slDataset(object):
                         for old_att in sf.ncattrs():
                             if not old_att in globattrs_list:
                                 sf.delncattr(old_att)
+
+                for sg in sgs:
+                    gname = sg.name
+                    mastergroup = self.groups[gname]
+                    gattrs = mastergroup.ncattrs()
+                    if not gattrs == sg.ncattrs():
+                        for old_att in sg.ncattrs():
+                            if not old_att in gattrs:
+                                sg.delncattr(old_att)
+
                 self.close_subfiles(sfs)
         return changed_files
 
     def sync_subfiles(self):
         for varname in self._cfa_variables.keys():
-            svs, sfs, open_files, subfiles = self.return_subvars(varname=varname)
+            svs, sfs, sgs, open_files, subfiles = self.return_subvars(varname=varname)
             for sf in sfs:
                 sf.sync()
             self.close_subfiles(sfs)
@@ -481,7 +494,9 @@ class slDataset(object):
         return self.ncD.createEnumType(datatype,datatype_name,enum_dict)
 
     def createGroup(self,groupname):
-        return self.ncD.createGroup(groupname)
+        _group = self.ncD.createGroup(groupname)
+
+        return slGroup(groupname,_group,self._file_details,self.dimensions,self.ncD,self.mode)
 
     def createVLType(self, datatype, datatype_name):
         return self.ncD.createVLType(datatype,datatype_name)
@@ -521,6 +536,10 @@ class slDataset(object):
 
     def getncattr(self,name):
         return self.ncD.getncattr(name)
+
+    @property
+    def groups(self):
+        return self.ncD.groups
 
     def ncattrs(self):
         return self.ncD.ncattrs()
@@ -566,6 +585,7 @@ class slDataset(object):
             vars = [varname]
         svs = []
         sfs = []
+        sgs = []
         files_for_download = []
         cache_locs = []
         posix_files = []
@@ -607,6 +627,10 @@ class slDataset(object):
                 sf = netCDF4.Dataset(file,'a')
                 sfs.append(sf)
                 svs.append(sf.variables[var])
+                # check for groups and group vars
+                for sg in sf.groups:
+                    sgs.append(sg)
+                    svs.append(sg.variables[var])
 
             # now add the downloaded vars
             for file in cache_locs:
@@ -614,15 +638,19 @@ class slDataset(object):
                 sf = netCDF4.Dataset(file,'a')
                 sfs.append(sf)
                 svs.append(sf.variables[var])
+                # check for groups and group vars
+                for sg in sf.groups:
+                    sgs.append(sg)
+                    svs.append(sg.variables[var])
 
-        return svs, sfs, all_open_files, subfiles
+        return svs, sfs, sgs, all_open_files, subfiles
 
     def renameDimension(self,oldname,newname):
         self.ncD.renameDimension(oldname,newname)
         self.ncD.renameVariable(oldname,newname)
 
         if self._file_details.cfa_file is not None:
-            svs, sfs, open_files, subfiles = self.return_subvars()
+            svs, sfs, sgs, open_files, subfiles = self.return_subvars()
             # loop through variables
             for sf in sfs:
                 sf.renameDimension(oldname, newname)
@@ -635,7 +663,7 @@ class slDataset(object):
         self.ncD.renameGroup(oldname,newname)
 
         if self._file_details.cfa_file is not None:
-            svs, sfs, open_files, subfiles = self.return_subvars()
+            svs, sfs, sgs, open_files, subfiles = self.return_subvars()
             # loop through variables
             for sf in sfs:
                 sf.renameGroup(oldname,newname)
@@ -654,7 +682,7 @@ class slDataset(object):
 
         if self._file_details.cfa_file is not None:
 
-            svs, sfs, open_files, subfiles = self.return_subvars(varname=oldname,newname=newname)
+            svs, sfs, sgs, open_files, subfiles = self.return_subvars(varname=oldname,newname=newname)
             # loop through variables
             for sf in sfs:
                 sf.renameVariable(oldname,newname)
@@ -716,134 +744,300 @@ class slGroup(object):
      attribute to say which group it is in, for rebuilds?
     """
 
-    def __init__(self, parent, name):
-        self.parent = parent
-        self.name = name
+    def __init__(self, groupname, _group, _file_details,_dims,_parent, mode):
+        self.groupname = groupname
+        self._group = _group
+        self._file_details = _file_details
+        self._cfa_variables = OrderedDict()
+        self._nc_dims = _dims
+        self._nc_parent = _parent
+        self._sl_config = slConfig()
+        self.mode = mode
 
 
 
-    def createVariable(self):
-        pass
+    def createVariable(self, varname, datatype, dimensions=(), zlib=False,
+                       complevel=4, shuffle=True, fletcher32=False, contiguous=False,
+                       chunksizes=None, endian='native', least_significant_digit=None,
+                       fill_value=None, chunk_cache=None):
+        """Overloaded version of createVariable that has the following behaviour:
+           For standard netCDF files (non CFA split) just pass through to the base method.
+           For CF-netCDF files, create the variable with no dimensions, and create the
+           required CFA metadata."""
+
+        slC = slCache()
+        if self._file_details.cfa_file is None:
+            var = self._group.createVariable(varname, datatype, dimensions, zlib,
+                                                 complevel, shuffle, fletcher32, contiguous,
+                                                 chunksizes, endian, least_significant_digit,
+                                                 fill_value, chunk_cache)
+            return var
+        else:
+            # get the variable shape, so we can determine the partitioning scheme
+            # (and whether there should even be a partitioning scheme)
+            var_shape = []
+            for d in dimensions:
+                try:
+                    var_shape.append(self._nc_dims[d].size)
+                except KeyError:
+                    var_shape.append(self._group.dimensions[d].size)
+
+            # is the variable name in the dimensions?
+            if varname in self._group.dimensions or varname in self._nc_parent.dimensions or var_shape == []:
+                # it is so create the Variable with dimensions
+                var = self._group.createVariable(varname, datatype, dimensions, zlib,
+                                                     complevel, shuffle, fletcher32, contiguous,
+                                                     chunksizes, endian, least_significant_digit,
+                                                     fill_value, chunk_cache)
+                return var
+            else:
+                # it is not so create a dimension free version
+                # We need to check that the dimension variables exist before we can create the variable which uses them
+                for d in dimensions:
+                    try:
+                        dvar = self.variables[d]
+                    except KeyError as e:
+                        try:
+                            dvar = self._nc_parent.variables[d]
+                        except KeyError as e:
+                            raise ValueError('{}\n\nError: The dimension variables need to created before a '
+                                             'variable which relies on them.'.format(e))
+
+                # Get the host name in order to get the obj size, otherwise refer to default
+                try:
+                    host_name = slU._get_hostname(self._file_details.filename)
+                    obj_size = self._sl_config['hosts'][host_name]['object_size']
+                    read_threads = self._sl_config['hosts'][host_name]['read_connections']
+                    write_threads = self._sl_config['hosts'][host_name]['write_connections']
+                except ValueError:
+                    obj_size = 0
+                    obj_size = self._sl_config['system']['default_object_size']
+                    read_threads = 1
+                    write_threads = 1
+
+                # create the partitions, i.e. a list of CFAPartition, and get the partition shape
+                # get the max file size from the s3ClientConfig
+
+                base_filename = self._file_details.filename.replace('.nc', '')
+                pmshape, partitions, subarrayshape = create_partitions(base_filename, self._group, dimensions,
+                                                                       varname, var_shape,
+                                                                       np.arange(1, dtype=datatype),
+                                                                       max_file_size=obj_size,
+                                                                       format="netCDF",group=self.groupname, parent = self._nc_parent)
+
+                # The "np.arange(1,dtype=datatype)" above is a hack to get around the fact that the function expects
+                # var.dtype, but the variable hasn't been created yet!
+
+                # Check whether the chunksize is larger than the subfile size
+                # Raising this exception here means that the variable will not be created if the chunksize is not valid
+                # whereas if netcdf4 python is left to throw the exception, the master variable gets created but the
+                # sub files do not.
+                if chunksizes is not None:
+                    for i, sv_el in enumerate(subarrayshape):
+                        if chunksizes[i] > sv_el:
+                            raise ValueError('The chunksize {} is incompatible with the subarray shape {}, please'
+                                             ' make the chunksize smaller than the subarray shape.'.format
+                                             (chunksizes,
+                                              subarrayshape))
+
+                # Create the master variable
+                var = self._group.createVariable(varname, datatype, (), zlib,
+                                                     complevel, shuffle, fletcher32, contiguous,
+                                                     chunksizes, endian, least_significant_digit,
+                                                     fill_value, chunk_cache)
+
+                # create the CFAVariable here
+                self._file_details.cfa_file.cfa_vars[varname] = CFAVariable(varname,
+                                                                            cf_role="cfa_variable",
+                                                                            cfa_dimensions=list(dimensions),
+                                                                            pmdimensions=list(dimensions),
+                                                                            pmshape=pmshape,
+                                                                            base="", partitions=partitions)
+                # add the metadata to the variable
+                cfa_var_meta = self._file_details.cfa_file.cfa_vars[varname].dict()
+                for k in cfa_var_meta:
+                    if k == "cfa_array":  # convert the cfa_array metadata to json
+                        var.setncattr(k, json.dumps(cfa_var_meta[k]))
+                    else:
+                        var.setncattr(k, cfa_var_meta[k])
+
+                # check whether we need to copy the dimension values and metadata into the variable
+                for d in dimensions:
+                    if len(self._file_details.cfa_file.cfa_dims[d].values) == 0:
+                        # values
+                        try:
+                            self._file_details.cfa_file.cfa_dims[d].values = np.array(self._nc_parent.variables[d][:])
+                        except KeyError:
+                            self._file_details.cfa_file.cfa_dims[d].values = np.array(self._group.variables[d][:])
+                        # metadata
+                        try:
+                            md = {k: self._nc_parent.variables[d].getncattr(k) for k in self._nc_parent.variables[d].ncattrs()}
+                        except KeyError:
+                            md = {k: self._nc_parent.variables[d].getncattr(k) for k in self._group.variables[d].ncattrs()}
+                        self._file_details.cfa_file.cfa_dims[d].metadata = md
+
+                # keep the calling parameters in a dictionary, and add the parameters from the client config
+                parameters = {'varname': varname, 'datatype': datatype, 'dimensions': dimensions, 'zlib': zlib,
+                              'complevel': complevel, 'shuffle': shuffle, 'fletcher32': fletcher32,
+                              'contiguous': contiguous, 'chunksizes': chunksizes, 'endian': endian,
+                              'least_significant_digit': least_significant_digit,
+                              'fill_value': fill_value, 'chunk_cache': chunk_cache,
+                              'cache_location': self._sl_config['cache']['location'],
+                              'max_object_size_for_memory': obj_size,
+                              'write_threads': write_threads,
+                              'read_threads': read_threads,
+                              'mode': self.mode,
+                              'nc_parent': self._nc_parent}
+
+                self._file_details.cfa_file.groups = dict(self._nc_parent.groups)
+                # create the s3Variable which is a reimplementation of the netCDF4 variable
+                self._cfa_variables[varname] = slVariable(var, self._file_details.cfa_file,
+                                                          self._file_details.cfa_file.cfa_vars[varname],
+                                                          parameters)
+                return self._cfa_variables[varname]
 
     def close(self):
-        pass
+        return self._group.close()
 
     def cmptypes(self):
-        pass
+        return self._group.cmptypes()
 
     def createCompoundType(self):
-        pass
+        raise NotImplementedError
 
-    def createDimension(self):
-        pass
+    def createDimension(self,dimname, size):
+        ncd = self._group.createDimension(dimname, size)
+        if self._file_details.cfa_file is not None:
+            # add to the dimensions
+            self._file_details.cfa_file.cfa_dims[dimname] = CFADim(dim_name=dimname, dim_len=size)
 
     def createEnumType(self):
-        pass
+        raise NotImplementedError
 
-    def createGroup(self):
-        pass
+    def createGroup(self,groupname):
+        _group = self._group.createGroup(groupname)
+
+        return slGroup(groupname, _group, self._file_details, self._nc_parent.dimensions, self._nc_parent, self.mode)
 
     def createVLType(self):
         pass
 
+    @property
     def data_model(self):
-        pass
+        return self._group.data_model
 
-    def delncattr(self):
-        pass
+    def delncattr(self,name):
+        return self._group.delncattr(name)
 
+    @property
     def dimensions(self):
-        pass
+        return self._group.dimensions
 
+    @property
     def disk_format(self):
-        pass
+        return self._group.disk_format
 
     def enumtypes(self):
-        pass
+        raise NotImplementedError
 
+    @property
     def file_format(self):
-        pass
+        return self._group.file_format
 
-    def filepath(self):
-        pass
+    def filepath(self,enconding=None):
+        return self._group.filepath(enconding)
 
-    def get_variables_by_attributes(self):
-        pass
+    def get_variables_by_attributes(self,**kwargs):
+        return self._group.get_variables_by_attributes(**kwargs)
 
-    def getncattr(self):
-        pass
+    def getncattr(self,name):
+        return self._group.getncattr(name)
 
+    @property
     def groups(self):
-        pass
+        return self._group.groups
 
     def isopen(self):
-        pass
+        return self._group.isopen()
 
     def keepweakref(self):
         pass
 
+    @property
     def name(self):
-        pass
+        return self._group.name
 
     def ncattrs(self):
-        pass
+        return self._group.ncattrs()
 
+    @property
     def parent(self):
-        pass
+        return self._group.parent
 
+    @property
     def path(self):
-        pass
+        return self._group.path
 
-    def renameAttribute(self):
-        pass
+    def renameAttribute(self,oldname,newname):
+        return self._group.renameAttribute(oldname,newname)
 
-    def renameDimension(self):
-        pass
+    def renameDimension(self,oldname,newname):
+        return self._group.renameDimension(oldname,newname)
 
-    def renameGroup(self):
-        pass
+    def renameGroup(self,oldname,newname):
+        return  self._group.renameGroup(oldname,newname)
 
-    def renameVariable(self):
-        pass
+    def renameVariable(self,oldname,newname):
+        return  self._group.renameVariable(oldname,newname)
 
     def set_always_mask(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def set_auto_chartostring(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def set_auto_mask(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def set_auto_maskandscale(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def set_auto_scale(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def set_fill_off(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def set_fill_on(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
-    def setncattr(self):
-        pass
+    def setncattr(self,name,value):
+        return self._group.setncattr(name,value)
 
-    def setncattr_string(self):
-        pass
+    def setncattr_string(self,name,value):
+        return self._group.setncattr_string(name, value)
 
-    def setncatts(self):
-        pass
+    def setncatts(self,attrdict):
+        return self._group.setncatts(attrdict)
 
     def sync(self):
-        pass
-
-    def variables(self):
-        pass
+        # TODO
+        raise NotImplementedError
 
     def vltypes(self):
-        pass
+        # TODO
+        raise NotImplementedError
+
+    @property
+    def variables(self):
+        return self._group.variables
 
 
 class slVariable(object):
@@ -1172,7 +1366,7 @@ class slVariable(object):
         write_interface = interface()
         # pass in the required parameters for writing
         write_interface.set_write_params(data, self._nc_var, self._cfa_var, self._cfa_file,
-                                         self._init_params['write_threads'], self._init_params)
+                                         self._init_params['write_threads'], self._init_params, self.group())
         pret = write_interface.write(subset_parts, elem_slices)
 
         self.subfiles_accessed.extend(pret)

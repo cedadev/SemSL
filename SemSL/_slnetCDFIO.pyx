@@ -229,6 +229,7 @@ def get_netCDF_file_details(filename, filemode='r', diskless=False, persist=Fals
     # otherwise just return the filename in file_details
     else:
         file_details.filename = filename
+        file_details.format = 'NETCDF4'
 
     return file_details
 
