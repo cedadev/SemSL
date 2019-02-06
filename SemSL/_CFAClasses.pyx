@@ -1,13 +1,15 @@
 """
-   Classes containing the structure of CFA-netCDF files (master array) and the CF-netcdf subarray files.
+   Classes containing the structure of CFA-netCDF files (master array) and the
+   CF-netcdf subarray files.
    See:
      http://www.met.reading.ac.uk/~david/cfa/0.4/index.html
    for the specification of the CFA conventions.
 
-   Only a subset of the CFA-netCDF specification is implemented - just what we use to fragment the files
-   to store as multiple objects on the object storage.
+   Only a subset of the CFA-netCDF specification is implemented - just what we
+   use to fragment the files to store as multiple objects on the object storage.
 
-   The classes here are organised to reflect the implied hierarchy in the CFA conventions :
+   The classes here are organised to reflect the implied hierarchy in the CFA
+   conventions :
    (NC = netCDF)
 
    +-------------------------------+                +-------------------------------+
@@ -65,7 +67,7 @@ cdef class CFAFile:
     """
 
     cdef public dict cfa_dims
-    cdef public dict cfa_metadata
+    cdef public dict metadata
     cdef public dict cfa_vars
     cdef public basestring format
 
@@ -74,7 +76,7 @@ cdef class CFAFile:
                  format="NETCDF4"):
         """Initialise the CFAFile class"""
         self.cfa_dims = dict(cfa_dims)
-        self.cfa_metadata = dict(cfa_metadata)
+        self.metadata = dict(cfa_metadata)
         self.cfa_vars = dict(cfa_vars)
         self.format = format
 

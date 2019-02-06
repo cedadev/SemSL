@@ -9,8 +9,8 @@ __copyright__ = "(C) 2012 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 
 #from _s3Client import *
-from _s3Exceptions import *
-from _CFAClasses import *
+from SemSL._s3Exceptions import *
+from SemSL._CFAClasses import *
 from SemSL._slCacheManager import slCacheManager
 from SemSL._slConfigManager import slConfig
 from SemSL._slConnectionManager import slConnectionManager
@@ -106,9 +106,9 @@ def _get_netCDF_filetype(s3_client, bucket_name, object_name, backend):
         file_version = ord(s3_object[3])
         if file_version == 1:
             file_type = 'NETCDF3_CLASSIC'
-        elif file_version == '2':
+        elif file_version == 2:
             file_type = 'NETCDF3_64BIT_OFFSET'
-        elif file_version == '5':
+        elif file_version == 5:
             file_type = 'NETCDF3_64BIT_DATA'
         else:
             file_version = 1 # default to one if no version

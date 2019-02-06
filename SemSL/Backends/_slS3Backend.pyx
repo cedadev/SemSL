@@ -5,7 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 from botocore.client import Config
 
-from _slBackend import slBackend
+from SemSL.Backends._slBackend import slBackend
 from SemSL._slExceptions import slIOException, slAPIException
 
 class slS3Backend(slBackend):
@@ -105,4 +105,3 @@ class slS3Backend(slBackend):
         s3_object  = conn.get_object(Bucket=bucket,Key=fid, Range='bytes={}-{}'.format(start,stop))
         body = s3_object['Body']
         return body.read().decode('utf8','replace').strip()
-

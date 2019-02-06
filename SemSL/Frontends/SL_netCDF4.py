@@ -103,12 +103,15 @@ class slDataset(object):
 
             if cfa:
                 # Get the host name in order to get the specific settings
-                try:
+                #try:
+                if True:
+                    print(self._file_details.filename)
                     host_name = slU._get_hostname(self._file_details.filename)
-                    obj_size = self._sl_config['hosts'][host_name]['object_size']
+                    obj_size = self._sl_config['system']['max_object_size_for_memory']
                     read_threads = self._sl_config['hosts'][host_name]['read_connections']
                     write_threads = self._sl_config['hosts'][host_name]['write_connections']
-                except ValueError:
+                else:
+                #except ValueError:
                     obj_size = 0
                     read_threads = 1
                     write_threads = 1
@@ -542,16 +545,21 @@ class slDataset(object):
         self.slC.bulk_upload(file_list)
 
     def return_subvars(self,varname=False,newname=False):
-        # returns a list of the sub varible objects to update, and the posix files and cache files
+        # returns a list of the sub varible objects to update, and the posix
+        # files and cache files
         # to enable closing
 
-        # if files not in cache then need to download in bulk from backend BEFORE updating files
-        # for all subfiles, check the cache, and create list of all ones not in there
-        # the size of the total files also needs to be caculated to make sure it is not larger than the
+        # if files not in cache then need to download in bulk from backend
+        # BEFORE updating files
+        # for all subfiles, check the cache, and create list of all ones not in
+        # there
+        # the size of the total files also needs to be caculated to make sure it
+        # is not larger than the
         # max cache size
         # get the list of subfiles from the master file
 
-        # if the variable name is not supplied, get all the variables in the dataset
+        # if the variable name is not supplied, get all the variables in the
+        # dataset
         if not varname:
             vars = self._cfa_variables
         else:
@@ -1127,8 +1135,12 @@ class slVariable(object):
         # create the target array
         # this will be a memory mapped array if it is greater than the user_config["max_object_size_for_memory"] or
         # the available memory
+        print (subset_size / (1024*1024*1024),
+               float(self._init_params['max_object_size_for_memory']) / (1024*1024*1024),
+               virtual_memory().available / (1024*1024*1024))
         if subset_size > self._init_params['max_object_size_for_memory'] or subset_size > virtual_memory().available:
             # create a memory mapped array in the cache for the output array
+            print ("Memmap array")
             mmap_name = self._init_params['cache_location'] + "/" + os.path.basename(subset_parts[0].subarray.file) + "_{}".format(int(numpy.random.uniform(0,1e8)))
             tgt_arr = numpy.memmap(mmap_name, dtype=self._nc_var.dtype, mode='w+', shape=tuple(subset_shape))
         else:
@@ -1164,5 +1176,3 @@ class slVariable(object):
         pret = write_interface.write(subset_parts, elem_slices)
 
         self.subfiles_accessed.extend(pret)
-
-

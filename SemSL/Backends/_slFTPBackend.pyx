@@ -3,7 +3,7 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 
 import ftplib
 
-from _slBackend import slBackend
+from SemSL.Backends._slBackend import slBackend
 from SemSL._slExceptions import slIOException, slAPIException
 
 class slFTPBackend(slBackend):

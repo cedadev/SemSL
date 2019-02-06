@@ -9,7 +9,7 @@ o. When a connection is closed it is removed from the pool.
 __copyright__ = "(C) 2012 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 
-from _slExceptions import slIOException, slAPIException
+from SemSL._slExceptions import slIOException, slAPIException
 from SemSL import Backends
 
 class slConnection(object):

@@ -3,12 +3,12 @@ Configuration management for Sem-SL.  Configuration is stored for each user in
 a JSON file in their home directory: ~/.sem-sl.json
 """
 
-__copyright__ = "(C) 2012 Science and Technology Facilities Council"
+__copyright__ = "(C) 2019 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 
 import os
 import json
-from _slExceptions import slIOException, slAPIException
+from SemSL._slExceptions import slIOException, slAPIException
 
 def convert_file_size_string(value):
     """Convert a string containing a file size and suffix to an integer number
@@ -75,9 +75,8 @@ class slConfig(object):
             # add the filename to the config so we can refer to it in error
             # messages
             self._sl_user_config["filename"] = sl_config_path
-            keys_to_convert = ["object_size",
-                               "cache_size",
-                               "object_size_for_memory",
+            keys_to_convert = ["cache_size",
+                               "max_object_size_for_memory",
                                "default_object_size"]
             # interpret the config file, converting the above keys
             interpret_config_file(self._sl_user_config, keys_to_convert)

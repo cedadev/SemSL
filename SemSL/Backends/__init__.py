@@ -1,11 +1,12 @@
 """Initilise the backends, provide functions to interrogate which backends are
 available."""
-from SemSL.Backends import _slS3Backend, _slFTPBackend
+from SemSL.Backends import _slS3Backend, _slFTPBackend, _slFileBackend
 
 def get_backends():
     """Get a tuple of all the backends that have been added to SemSL"""
     return [_slS3Backend.slS3Backend,
-            _slFTPBackend.slFTPBackend]
+            #_slFTPBackend.slFTPBackend,
+            _slFileBackend.slFileBackend]
 
 def get_backend_ids():
     """Get the ids of the backends that have been added to SemSL"""

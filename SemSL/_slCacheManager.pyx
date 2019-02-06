@@ -1,9 +1,11 @@
 """
 Cache/staging management for SemSL.
 
-Requested files from backend are stored in a disk caching area defined in the user's config file. Object requests check
-the disk cache before, going to the backend, and if the file exists in cache the path is provided, otherwise the request
-is sent to the backend. Once the cache is full, the least recently accessed files are removed in order to make space.
+Requested files from backend are stored in a disk caching area defined in the
+user's config file. Object requests check the disk cache before going to the
+backend and, if the file exists in cache the path is provided, otherwise the
+request is sent to the backend. Once the cache is full, the least recently
+accessed files are removed in order to make space.
 """
 
 __copyright__ = "(C) 2012 Science and Technology Facilities Council"
@@ -133,7 +135,6 @@ class slCacheManager(object):
             if buckets_dict[i]['Name'] == bucket:
                 bucket_check = True
 
-
         # create bucket if it doen't exist
         if not bucket_check:
             backend.create_bucket(client,bucket)
@@ -182,7 +183,6 @@ class slCacheManager(object):
         else:
             raise TypeError('File ID not valid')
 
-
         if self.diskless:
             raise NotImplementedError
             # we need to assert whether the required file can fit into memory before we try
@@ -223,7 +223,8 @@ class slCacheManager(object):
 
 
     def close(self,fid,mode,subfiles_accessed=[],test=False):
-        """ Uploads the file from cache, or directly to the backend, if not in cache, will save to cache
+        """ Uploads the file from cache, or directly to the backend, if not in
+        cache, will save to cache
         :param test:
         :return: 0 on success
         """
@@ -400,5 +401,3 @@ class slCacheManager(object):
                 path = 'rm -r {}'.format('{}semslcachedb'.format(self.cache_loc))
                 os.system(path.encode())
         return 0
-
-

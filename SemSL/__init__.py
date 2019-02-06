@@ -2,6 +2,11 @@
 
 import pyximport
 import numpy as np
-pyximport.install(setup_args={'include_dirs': np.get_include()})
+import os
+os.environ["C_INCLUDE_PATH"] = np.get_include()
+pyximport.install(
+    setup_args={'include_dirs': np.get_include()},
+    language_level=3,
+    )
 
 from ._slConfigManager import *

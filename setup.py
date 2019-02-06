@@ -15,7 +15,9 @@ setup(
       'numpy',
       'cython',
       'netcdf4',
-      'boto3'
+      'boto3',
+      'lmdb',
+      'psutil',
     ],
     include_package_data=True,
     license='my License',  # example license

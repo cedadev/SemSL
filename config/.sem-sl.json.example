@@ -4,7 +4,7 @@
 		"minio": {
 		    "alias": "s3://minio",
 			"backend": "slS3Backend",
-			"url": "http://192.168.51.30:9000",
+			"url": "http://130.246.129.81:9000",
 			"required_credentials": {
 				"access_key": "WTL17W3P2K3C7IYVX4W9",
 				"secret_key": "VUcT86fJFF0XTPtcrsnjUnvtM7Wj1N3cb9mALRZ9"
@@ -46,6 +46,7 @@
 		"cache_size": "128MB"
 	},
 	"system": {
-		"object_size_for_memory": "128MB"
+		"max_object_size_for_memory": "2048MB",
+		"default_object_size" : "256MB"
 	}
 }

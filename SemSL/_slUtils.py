@@ -15,12 +15,11 @@ def _get_alias(fid):
     aliases = []
     for host_name in iter(host_keys):
         aliases.append(sl_config['hosts'][host_name]['alias'])
-
     for alias in aliases:
         if alias in fid:
             return alias
-        else: # return None if alias isn't found in list
-            return None
+
+    return None
 
 def _get_hostname(fid):
 
@@ -29,6 +28,7 @@ def _get_hostname(fid):
     try:
         hosts = sl_config["hosts"]
         for h in hosts:
+            print(h)
             if alias in hosts[h]['alias']:
                 host_name = h
     except Exception as e:

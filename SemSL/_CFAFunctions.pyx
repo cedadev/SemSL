@@ -12,7 +12,7 @@ import json
 import os
 from functools import reduce
 
-from _CFAClasses import *
+from SemSL._CFAClasses import *
 
 CFA_VERSION = "CFA-0.4"
 DEFAULT_OBJECT_SIZE = 2*1024*1024 # 2MB default object size
