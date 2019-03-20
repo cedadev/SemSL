@@ -1,8 +1,10 @@
 
 from netCDF4 import Dataset as ncDataset
-from CFA._CFAClasses import *
-from CFA._CFAParsers import read_netCDF, write_netCDF
-from CFA._CFASplitter import CFASplitter
+from SemSL.CFA._CFAClasses import *
+from SemSL.CFA._CFAParsers import read_netCDF, write_netCDF
+from SemSL.CFA._CFASplitter import CFASplitter
+
+import numpy as np
 
 TEST_DATASET="/Users/dhk63261/Archive/cru/data/cru_ts/cru_ts_3.24.01/data/tmp/cru_ts3.24.01.2011.2015.tmp.dat.nca"
 OUT_TEST_DATASET="/Users/dhk63261/Archive/cru/data/cru_ts/cru_ts_3.24.01/data/tmp/reconstructed.dat.nca"
@@ -42,7 +44,6 @@ def test_splitting():
 def test_createArray():
     cfa_dataset = CFADataset(name="fake_cru", format='NETCDF4')
     cfa_group = cfa_dataset.createGroup('root')
-    print(cfa_dataset.root)
     time_dim = cfa_group.createDimension(
                   dim_name='time',
                   dim_len=60,
@@ -78,17 +79,17 @@ def test_createArray():
                 dim_names=['time', 'level', 'latitude', 'longitude'],
                 max_subarray_size=1024*256,
               )
-    print(cfa_group.tmp)
-    print(cfa_group.longitude)
-    print(cfa_group.tmp.shape)
-#    filepath="/Users/dhk63261/Archive/test_cfa/fake_cru.nca"
-#    format = cfa_dataset.getFormat()
-#    nc_dataset = ncDataset(filepath, 'w', format=format)
-#    write_netCDF(cfa_dataset, nc_dataset)
-
+    # print(cfa_dataset.root)
+    # print(cfa_group.tmp)
+    # print(cfa_group.longitude)
+    # print(cfa_group.tmp.shape())
+    return cfa_dataset
 
 #cfa_dataset = test_parsing(TEST_DATASET)
+#print (cfa_dataset['root']['tmp'][:])
 #test_writing(cfa_dataset, OUT_TEST_DATASET)
 #test_splitting()
-test_createArray()
+cfa_dataset = test_createArray()
+#print (cfa_dataset['root']['tmp'][:])
+print (cfa_dataset['root']['tmp'][2:4,0,11:20,0:40])
 #test_createArray()

@@ -9,8 +9,8 @@
    for the specification of the CFA conventions.
 """
 
-from CFA._CFAExceptions import *
-from CFA._CFAClasses import *
+from SemSL.CFA._CFAExceptions import *
+from SemSL.CFA._CFAClasses import *
 
 import json
 

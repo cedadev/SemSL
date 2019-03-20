@@ -23,7 +23,7 @@
     | CFAGroup           getGroup(string grp_name)   |
     | bool               renameGroup(string old_name,|
     |                                string new_name)|
-    | iterator<CFAGroup> getGroups()                 |
+    | list<string>       getGroups()                 |
     | dict<mixed>        getMetadata()               |
     +------------------------------------------------+
                    |
@@ -43,7 +43,7 @@
     |                     list<string> dim_names     |
     |                     dict<mixed> metadata)      |
     | CFAVariable  getVariable(string var_name)      |
-    | list<basestring>    getVariables()             |
+    | list<string> getVariables()                    |
     | bool         renameVariable(string old_name,   |
     |                            string new_name)    |
     |                                                |
@@ -51,7 +51,7 @@
     |                           int len,             |
     |                           dict<mixed>metadata) |
     | CFADim       getDimension(string dim_name)     |
-    | iterator<CFADim> getDimensions()               |
+    | list<string> getDimensions()                   |
     | bool         renameDimension(string old_name,  |
     |                             string new_name)   |
     |                                                |
@@ -119,9 +119,11 @@ __authors__ = "Neil Massey and Matthew Jones"
 
 import numpy as np
 cimport numpy as np
+from copy import copy
+import json
 
-from CFA._CFAExceptions import *
-from CFA._CFASplitter import CFASplitter
+from SemSL.CFA._CFAExceptions import *
+from SemSL.CFA._CFASplitter import CFASplitter
 
 cdef class CFADataset:
     """
@@ -186,6 +188,10 @@ cdef class CFADataset:
         for md in self.metadata:
             repstr += "\t{} : {}\n".format(md, self.metadata[md])
         return repstr[:-1]
+
+    def __getitem__(CFADataset self, basestring grp_name):
+        """Overload the getitem to return a group"""
+        return self.getGroup(grp_name)
 
     def __getattr__(CFADataset self, basestring grp_name):
         """Overload the getattribute to return a group"""
@@ -361,6 +367,10 @@ cdef class CFAGroup:
         for md in self.metadata:
             repstr += "\t{} : {}\n".format(md, self.metadata[md])
         return repstr[:-1]
+
+    def __getitem__(CFAGroup self, basestring name):
+        """Overload getitem to behave as getattr"""
+        return self.__getattr__(name)
 
     def __getattr__(CFAGroup self, basestring name):
         """Return the variable or dimension with the name of varname"""
@@ -719,15 +729,170 @@ cdef class CFAVariable:
 
         self._shape = np.array([])
 
+        # build the lookup array if partitions are added
+        if len(self.partitions) != 0:
+            self._pm_index_lut = np.zeros(tuple(self.pmshape), dtype=np.int32)
+            for p in range(0, len(self.partitions)):
+                index = tuple(self.partitions[p].getIndex())
+                self._pm_index_lut[index] = p
+
     def __repr__(CFAVariable self):
         """Return a string representing the variable"""
-        repstr = repr(type(self)) + " : name = {} : dimensions = {}\n".format(
+        repstr = repr(type(self)) + " : name = {} : dimensions = {} : shape = {}\n".format(
             self.var_name,
-            str([dim for dim in self.cfa_dimensions])
+            str([dim for dim in self.cfa_dimensions]),
+            str([s for s in self.shape()])
         )
         for md in self.metadata:
             repstr += "\t{} : {}\n".format(md, self.metadata[md])
         return repstr[:-1]
+
+
+    def __getitem__(CFAVariable self, in_key):
+        """Return all the subarrays required to take a slice out of the master
+           array, the slice to take within the subarray and the position of that
+           slice in the master array.
+
+           Args:
+               key: an index into the CFA master array
+
+           Returns:
+               list<tuple> A list of tuples containing the sub array info needed
+                  The tuple consists of (file, var, slice, position) where:
+                  file: string: the name of the file containing the subarray
+                  var: string: the name of the variable in the file
+                  slice: array: the index into the subarray file
+                  position: array: the position in the master array file
+        """
+        cdef np.ndarray slices                # don't use slices, use nx3
+        cdef list slice_range                 # dimesional numpy arrays
+        cdef list index_list                  # for speeeeeeeeeeeeeeed!
+        cdef list new_index_list
+        cdef np.ndarray source_slice          # slice in the source partition
+        cdef np.ndarray target_slice          # slice in the target master array
+        cdef list return_list
+        cdef int s, x, d, n                   # iterator variables
+
+        # try to get the length or convert to list
+        try:
+            key_l = len(in_key)
+            key = in_key
+        except:
+            key_l = 1
+            key = [in_key]
+
+        # fill the slices from the 0 index upwards
+        shape = self.shape()
+        slices = np.zeros([len(shape), 3], np.int32)
+        for s in range(0, key_l):
+            key_ts = type(key[s])
+            if (key_ts is int or key_ts is np.int32 or key_ts is np.int64 or
+                key_ts is np.int16 or key_ts is np.int8):
+                slices[s,:] = [key[s], key[s], 1]
+            elif key_ts is slice:
+                key_list = key[s].indices(shape[s])
+                slices[s,:] = [key_list[0], key_list[1]-1, key_list[2]]
+            else:
+                raise CFAVariableIndexError(
+                    "Cannot index CFA array with type: {} from {}".format(
+                        key_ts, in_key
+                    )
+                )
+        # fill in any other part that is not specified
+        for s in range(key_l, len(shape)):
+            slices[s] = [0, shape[s]-1, 1]
+
+        # reset key_l as we have now filled the slices
+        key_l = len(slices)
+        # check the ranges of the slices
+        for s in range(0, key_l):
+            if (slices[s,0] < 0 or slices[s,0] >= shape[s] or
+                slices[s,1] < 0 or slices[s,1] >= shape[s]):
+                raise CFAVariableIndexError(
+                    "Index into CFA array is out of range: {}".format(
+                        in_key)
+                    )
+
+
+        # now we have the slices we can determine the partitions, using the
+        # partition shape
+        i_per_part = shape / self.pmshape
+        slice_range = []
+        for s in range(0, key_l):
+            # append the start / stop of the partition indices for each axis
+            slice_range.append(np.arange(int(slices[s,0] / i_per_part[s]),
+                                         int(slices[s,1] / i_per_part[s])+1))
+
+        """Generate all possible combinations of the indices.
+        indices should contain an iterator (list, array, etc) of iterators,
+        where each of the sub-iterators contains the indices required for that
+        dimension.
+        e.g.: indices = [np.arange(1,4),  # t axis for cf-netcdf file
+                         np.arange(0,1),  # z axis
+                         np.arange(6,9),  # y axis
+                         np.arange(2,3)]  # x axis
+        """
+
+        index_list = []
+        # build the first dimension
+        for x in range(0, len(slice_range[0])):
+            index_list.append([slice_range[0][x]])
+        # loop over all of the other dimensions
+        for n in range(1, len(slice_range)):
+            new_index_list = []
+            for x in range(0, len(index_list)):
+                for y in range(0, len(slice_range[n])):
+                    # make a copy of the index list
+                    z = copy(index_list[x])
+                    # append the value
+                    z.append(slice_range[n][y])
+                    # add to the new list
+                    new_index_list.append(z)
+            index_list = copy(new_index_list)
+
+        # now get the partition filenames, with the variable and the source
+        # and target slices necessary to copy a slice from a subarray to a
+        # master array
+        return_list = []
+        for i in index_list:
+            partition = self.getPartition(i)
+            # create the default source slice, this is the shape of the subarray
+            ndims = len(partition.subarray.shape)
+            source_slice = np.zeros([ndims,3], np.int32)
+            target_slice = np.zeros([ndims,3], np.int32)
+            # loop over all the slice dimensions - these should be equal between
+            # the source_slice and target_slice
+            for d in range(0, ndims):
+                # create the target slice, this is the location of the partition
+                # in the master array - we will modify both of these
+                target_slice[d] = [partition.location[d,0],
+                                   partition.location[d,1],
+                                   1]
+                source_slice[d] = [0,
+                                   partition.subarray.shape[d],
+                                   1]
+                # rejig the target and source slices based on the input slices
+                if slices[d,1] < target_slice[d,1]:
+                    source_slice[d,1] -= target_slice[d,1] - slices[d,1]
+                    target_slice[d,1] = slices[d,1]
+                # adjust the target start and end for the sub slice
+                target_slice[d,0] -= slices[d,0]
+                target_slice[d,1] -= slices[d,0]
+                # check if the slice started in the location
+                if target_slice[d,0] < 0:
+                    # source slice start is absolute value of target slice
+                    source_slice[d,0] = -1 * target_slice[d,0]
+                    # target start is 0
+                    target_slice[d,0] = 0
+
+            # append in order: filename, varname, source_slice, target_slice
+            return_list.append((partition.subarray.file,
+                                partition.subarray.ncvar,
+                                source_slice,
+                                target_slice))
+
+        return return_list
+
 
     cpdef basestring getName(CFAVariable self):
         """Return the name of the variable."""
@@ -763,7 +928,7 @@ cdef class CFAVariable:
                 self._shape = np.maximum(self._shape, locat[:,1])
         return self._shape
 
-    cpdef CFAPartition getPartition(CFAVariable self, np.ndarray index):
+    cpdef CFAPartition getPartition(CFAVariable self, index):
         """Get the partition at the index"""
         # get the list index from the partition look up table
         try:

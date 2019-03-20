@@ -12,6 +12,9 @@ class CFADimensionError(CFAError):
 class CFAVariableError(CFAError):
     pass
 
+class CFAVariableIndexError(CFAError, IndexError):
+    pass
+
 class CFAPartitionError(CFAError):
     pass
 
