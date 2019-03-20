@@ -920,7 +920,7 @@ cdef class CFAVariable:
         # only do this if no cached version
         if self._shape.size == 0:
             # start with zeros
-            self._shape = np.empty(len(self.pmdimensions), np.int32)
+            self._shape = np.zeros(len(self.pmdimensions), np.int32)
             # loop over all the Partitions
             for i in range(0, len(self.partitions)):
                 # just get the maximum of the partition locations

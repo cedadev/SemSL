@@ -236,7 +236,7 @@ cdef class CFASplitter:
         n_shp_dims = len(self.subarray_shape)
 
         # create the current partition index
-        c_pindex = np.empty(n_shp_dims, 'i')
+        c_pindex = np.zeros(n_shp_dims, 'i')
 
         # partition_info for return
         partition_info = []
