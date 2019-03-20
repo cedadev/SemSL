@@ -731,7 +731,7 @@ cdef class CFAVariable:
 
         # build the lookup array if partitions are added
         if len(self.partitions) != 0:
-            self._pm_index_lut = np.zeros(tuple(self.pmshape), dtype=np.int32)
+            self._pm_index_lut = np.empty(tuple(self.pmshape), dtype=np.int32)
             for p in range(0, len(self.partitions)):
                 index = tuple(self.partitions[p].getIndex())
                 self._pm_index_lut[index] = p
@@ -783,7 +783,7 @@ cdef class CFAVariable:
 
         # fill the slices from the 0 index upwards
         shape = self.shape()
-        slices = np.zeros([len(shape), 3], np.int32)
+        slices = np.empty([len(shape), 3], np.int32)
         for s in range(0, key_l):
             key_ts = type(key[s])
             if (key_ts is int or key_ts is np.int32 or key_ts is np.int64 or
@@ -858,8 +858,8 @@ cdef class CFAVariable:
             partition = self.getPartition(i)
             # create the default source slice, this is the shape of the subarray
             ndims = len(partition.subarray.shape)
-            source_slice = np.zeros([ndims,3], np.int32)
-            target_slice = np.zeros([ndims,3], np.int32)
+            source_slice = np.empty([ndims,3], np.int32)
+            target_slice = np.empty([ndims,3], np.int32)
             # loop over all the slice dimensions - these should be equal between
             # the source_slice and target_slice
             for d in range(0, ndims):
@@ -920,7 +920,7 @@ cdef class CFAVariable:
         # only do this if no cached version
         if self._shape.size == 0:
             # start with zeros
-            self._shape = np.zeros(len(self.pmdimensions), np.int32)
+            self._shape = np.empty(len(self.pmdimensions), np.int32)
             # loop over all the Partitions
             for i in range(0, len(self.partitions)):
                 # just get the maximum of the partition locations
@@ -999,7 +999,7 @@ cdef class CFAVariable:
                     self.base = cfa_json["base"]
                 if "pmshape" in cfa_json:
                     self.pmshape = np.array(cfa_json["pmshape"], dtype='i')
-                    self._pm_index_lut = np.zeros(tuple(self.pmshape), dtype=np.int32)
+                    self._pm_index_lut = np.empty(tuple(self.pmshape), dtype=np.int32)
                 if "pmdimensions" in cfa_json:
                     self.pmdimensions = cfa_json["pmdimensions"]
                 for p in cfa_json["Partitions"]:

@@ -48,7 +48,7 @@ cdef class CFASplitter:
             # build the axis_types by guessing what they should be
             # this order follows CF conventions
             default_axis_types = ["T", "Z", "Y", "X"]
-            new_axis_types = np.zeros(shape.size)
+            new_axis_types = np.empty(shape.size)
             # position in default axis array
             p = len(default_axis_types)-1
             for i in range(shape.size, 0, -1):
@@ -85,7 +85,7 @@ cdef class CFASplitter:
                           np.ndarray c_subarray_divs,
                           list permitted_axes=["T"]):
         # calculate the number of elements per sub for the linear axis types
-        n_per_subf = np.zeros((len(self.shape),),'i')
+        n_per_subf = np.empty((len(self.shape),),'i')
         for i in range(0, len(self.shape)):
             if self.axis_types[i] not in permitted_axes:
                 n_per_subf[i] = int(1e6)
@@ -236,7 +236,7 @@ cdef class CFASplitter:
         n_shp_dims = len(self.subarray_shape)
 
         # create the current partition index
-        c_pindex = np.zeros(n_shp_dims, 'i')
+        c_pindex = np.empty(n_shp_dims, 'i')
 
         # partition_info for return
         partition_info = []
@@ -246,7 +246,7 @@ cdef class CFASplitter:
             # set partition index to current iterated partition index
             partition = namedtuple('partition', ['index', 'location'])
             partition.index = np.array(c_pindex)
-            partition.location = np.zeros((n_shp_dims, 2), 'i')
+            partition.location = np.empty((n_shp_dims, 2), 'i')
             # calculate the start and end locations
             partition.location[:,0] = (0.5+c_pindex[:] *
                                         self.subarray_shape).astype('i')
